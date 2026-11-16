@@ -26,8 +26,14 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInFull
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +74,7 @@ import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
 import app.veneer.data.LayoutOps
 import app.veneer.system.SystemActions
+import app.veneer.ui.theme.Vivid
 import app.veneer.widgets.WidgetHost
 import kotlinx.coroutines.delay
 import kotlin.math.min
@@ -401,34 +408,34 @@ private fun ItemMenu(item: HomeItem, controller: HomeController, actions: Launch
     fun close() {
         controller.menuItemId = null
     }
-    DropdownMenu(expanded = expanded, onDismissRequest = ::close) {
+    FriendlyMenu(expanded = expanded, onDismissRequest = ::close) {
         when (val content = item.content) {
             is ItemContent.App -> {
                 if (entry != null) {
-                    DropdownMenuItem(text = { Text("Edit icon and name") }, onClick = { close(); controller.editingApp = entry.key })
-                    DropdownMenuItem(text = { Text("App info") }, onClick = { close(); controller.app.apps.openAppInfo(entry.key) })
+                    MenuRow("Edit icon and name", Icons.Filled.Edit, Vivid.Violet) { close(); controller.editingApp = entry.key }
+                    MenuRow("App info", Icons.Filled.Info, Vivid.Blue) { close(); controller.app.apps.openAppInfo(entry.key) }
                 }
-                DropdownMenuItem(text = { Text("Remove from home") }, onClick = { close(); controller.removeItem(item.id, actions::deleteWidget) })
+                MenuRow("Remove from home", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
                 if (entry != null) {
-                    DropdownMenuItem(text = { Text("Uninstall") }, onClick = { close(); controller.app.apps.uninstall(entry.key) })
+                    MenuRow("Uninstall", Icons.Filled.Delete, Vivid.Coral) { close(); controller.app.apps.uninstall(entry.key) }
                 }
             }
             is ItemContent.Builtin -> {
-                DropdownMenuItem(text = { Text("Style") }, onClick = { close(); controller.editingStyleItemId = item.id })
+                MenuRow("Style", Icons.Filled.Palette, Vivid.Pink) { close(); controller.editingStyleItemId = item.id }
                 if (item.page != DOCK_PAGE) {
-                    DropdownMenuItem(text = { Text("Resize") }, onClick = { close(); controller.resizingItemId = item.id })
+                    MenuRow("Resize", Icons.Filled.OpenInFull, Vivid.Teal) { close(); controller.resizingItemId = item.id }
                 }
-                DropdownMenuItem(text = { Text("Remove") }, onClick = { close(); controller.removeItem(item.id, actions::deleteWidget) })
+                MenuRow("Remove", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
             }
             is ItemContent.Widget -> {
                 if (item.page != DOCK_PAGE) {
-                    DropdownMenuItem(text = { Text("Resize") }, onClick = { close(); controller.resizingItemId = item.id })
+                    MenuRow("Resize", Icons.Filled.OpenInFull, Vivid.Teal) { close(); controller.resizingItemId = item.id }
                 }
                 val info = actions.widgetHost.info(content.appWidgetId)
                 if (info != null && actions.widgetHost.isReconfigurable(info)) {
-                    DropdownMenuItem(text = { Text("Settings") }, onClick = { close(); actions.reconfigureWidget(content.appWidgetId) })
+                    MenuRow("Settings", Icons.Filled.Settings, Vivid.Blue) { close(); actions.reconfigureWidget(content.appWidgetId) }
                 }
-                DropdownMenuItem(text = { Text("Remove") }, onClick = { close(); controller.removeItem(item.id, actions::deleteWidget) })
+                MenuRow("Remove", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
             }
         }
     }

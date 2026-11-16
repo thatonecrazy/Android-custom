@@ -5,7 +5,46 @@ object Presets {
     val all: List<ThemeConfig> = listOf(
         ThemeConfig(
             name = "Default",
-            wallpaper = WallpaperSpec(WallpaperStyle.Vertical, 0xFF0F2027.toInt(), 0xFF2C5364.toInt()),
+            wallpaper = WallpaperSpec(WallpaperStyle.Aurora, 0xFF6C4BFF.toInt(), 0xFFFF4D9A.toInt(), 0xFF1FC8FF.toInt()),
+        ),
+        ThemeConfig(
+            name = "Sunset",
+            iconShape = IconShape.Squircle,
+            iconStyle = IconStyle.Vibrant,
+            iconSizeDp = 56,
+            fontId = "outfit",
+            labelBold = true,
+            dockBg = 0x40FFFFFF,
+            dockCornerDp = 36,
+            drawerBg = 0xF0281436.toInt(),
+            accent = 0xFFFF7A45.toInt(),
+            wallpaper = WallpaperSpec(WallpaperStyle.Vertical, 0xFFFFB347.toInt(), 0xFFFF4E7A.toInt(), 0xFF6A2BD9.toInt()),
+        ),
+        ThemeConfig(
+            name = "Candy",
+            iconShape = IconShape.Circle,
+            iconStyle = IconStyle.Vibrant,
+            iconSizeDp = 58,
+            fontId = "quicksand",
+            labelBold = true,
+            dockBg = 0x4DFFFFFF,
+            dockCornerDp = 40,
+            drawerBg = 0xF02B1240.toInt(),
+            accent = 0xFFFF5CB8.toInt(),
+            wallpaper = WallpaperSpec(WallpaperStyle.Aurora, 0xFFFF4FA8.toInt(), 0xFF9D5CFF.toInt(), 0xFF38C8FF.toInt()),
+        ),
+        ThemeConfig(
+            name = "Ocean",
+            iconShape = IconShape.Squircle,
+            iconStyle = IconStyle.Themed,
+            themedFg = 0xFFFFFFFF.toInt(),
+            themedBg = 0x40FFFFFF,
+            fontId = "space_grotesk",
+            dockBg = 0x26FFFFFF,
+            dockCornerDp = 32,
+            drawerBg = 0xEB04213F.toInt(),
+            accent = 0xFF3FE0D0.toInt(),
+            wallpaper = WallpaperSpec(WallpaperStyle.Diagonal, 0xFF00E0C6.toInt(), 0xFF0077FF.toInt(), 0xFF3A0CA3.toInt()),
         ),
         ThemeConfig(
             name = "Minimal Mono",
@@ -50,7 +89,7 @@ object Presets {
             drawerBg = 0xF00D0221.toInt(),
             drawerTextColor = 0xFF00F0FF.toInt(),
             accent = 0xFFFF2BD6.toInt(),
-            wallpaper = WallpaperSpec(WallpaperStyle.Radial, 0xFF6A0DAD.toInt(), 0xFF0D0221.toInt()),
+            wallpaper = WallpaperSpec(WallpaperStyle.Aurora, 0xFF7B2FF7.toInt(), 0xFFFF2BD6.toInt(), 0xFF00F0FF.toInt()),
         ),
         ThemeConfig(
             name = "Terminal",
@@ -78,8 +117,9 @@ object Presets {
             dockBg = 0x55FFFFFF,
             dockCornerDp = 40,
             drawerBg = 0xEE2E2A4F.toInt(),
-            accent = 0xFFFFB3C7.toInt(),
-            wallpaper = WallpaperSpec(WallpaperStyle.Diagonal, 0xFFFF9A9E.toInt(), 0xFF7F7FD5.toInt()),
+            accent = 0xFFFF7EB3.toInt(),
+            iconStyle = IconStyle.Vibrant,
+            wallpaper = WallpaperSpec(WallpaperStyle.Diagonal, 0xFFFF8FA3.toInt(), 0xFFB57BFF.toInt(), 0xFF6A8DFF.toInt()),
         ),
         ThemeConfig(
             name = "Elegant",
@@ -102,7 +142,8 @@ object Presets {
             dockCornerDp = 32,
             drawerBg = 0xB3101826.toInt(),
             accent = 0xFF7FDBFF.toInt(),
-            wallpaper = WallpaperSpec(WallpaperStyle.Diagonal, 0xFF00C6FB.toInt(), 0xFF005BEA.toInt()),
+            iconStyle = IconStyle.Vibrant,
+            wallpaper = WallpaperSpec(WallpaperStyle.Aurora, 0xFF00C6FB.toInt(), 0xFF005BEA.toInt(), 0xFF8A5CFF.toInt()),
         ),
         ThemeConfig(
             name = "Leaf",
@@ -118,5 +159,11 @@ object Presets {
             accent = 0xFF7BC88F.toInt(),
             wallpaper = WallpaperSpec(WallpaperStyle.Vertical, 0xFF134E5E.toInt(), 0xFF71B280.toInt()),
         ),
-    )
+    ).sortedBy { ORDER.indexOf(it.name) }
 }
+
+/** Colorful looks first, calm ones after. */
+private val ORDER = listOf(
+    "Default", "Sunset", "Candy", "Ocean", "Neon", "Playful", "Glass", "Leaf",
+    "Paper", "Minimal Mono", "Terminal", "Elegant",
+)

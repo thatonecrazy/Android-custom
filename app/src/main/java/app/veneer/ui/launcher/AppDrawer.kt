@@ -33,11 +33,16 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -71,6 +76,7 @@ import app.veneer.apps.AppEntry
 import app.veneer.apps.normalizeForSearch
 import app.veneer.data.LauncherState
 import app.veneer.system.SystemActions
+import app.veneer.ui.theme.Vivid
 import app.veneer.ui.theme.LocalThemeFont
 import app.veneer.veneer
 import java.text.Collator
@@ -216,15 +222,16 @@ fun AppDrawer(
                 IconButton(onClick = { overflowOpen = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "More", tint = fg)
                 }
-                DropdownMenu(expanded = overflowOpen, onDismissRequest = { overflowOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(if (showHidden) "Don't show hidden apps" else "Show hidden apps") },
-                        onClick = { showHidden = !showHidden; overflowOpen = false },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Customize Veneer") },
-                        onClick = { overflowOpen = false; close(); actions.openCustomize() },
-                    )
+                FriendlyMenu(expanded = overflowOpen, onDismissRequest = { overflowOpen = false }) {
+                    MenuRow(if (showHidden) "Don't show hidden apps" else "Show hidden apps", Icons.Filled.Visibility, Vivid.Amber) {
+                        showHidden = !showHidden
+                        overflowOpen = false
+                    }
+                    MenuRow("Customize Veneer", Icons.Filled.Palette, Vivid.Pink) {
+                        overflowOpen = false
+                        close()
+                        actions.openCustomize()
+                    }
                 }
             }
         }
@@ -300,28 +307,28 @@ private fun DrawerCell(
             entry, label, state.overrides[entry.key.id]?.icon, theme.iconSizeDp.coerceAtMost(64).let { it.dp },
             showLabel = theme.showDrawerLabels, labelColor = if (hidden) fg.copy(alpha = 0.5f) else fg, pressed = pressed,
         )
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text("Add to home screen") }, onClick = {
+        FriendlyMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            MenuRow("Add to home screen", Icons.Filled.AddCircle, Vivid.Green) {
                 menu = false
                 controller.addToHome(entry)
                 controller.closeDrawer()
-            })
-            DropdownMenuItem(text = { Text("Edit icon and name") }, onClick = {
+            }
+            MenuRow("Edit icon and name", Icons.Filled.Edit, Vivid.Violet) {
                 menu = false
                 controller.editingApp = entry.key
-            })
-            DropdownMenuItem(text = { Text(if (hidden) "Unhide" else "Hide from app list") }, onClick = {
+            }
+            MenuRow(if (hidden) "Unhide" else "Hide from app list", Icons.Filled.VisibilityOff, Vivid.Amber) {
                 menu = false
                 context.veneer.store.updateOverride(entry.key.id) { it.copy(hidden = !hidden) }
-            })
-            DropdownMenuItem(text = { Text("App info") }, onClick = {
+            }
+            MenuRow("App info", Icons.Filled.Info, Vivid.Blue) {
                 menu = false
                 controller.app.apps.openAppInfo(entry.key)
-            })
-            DropdownMenuItem(text = { Text("Uninstall") }, onClick = {
+            }
+            MenuRow("Uninstall", Icons.Filled.Delete, Vivid.Coral) {
                 menu = false
                 controller.app.apps.uninstall(entry.key)
-            })
+            }
         }
     }
 }

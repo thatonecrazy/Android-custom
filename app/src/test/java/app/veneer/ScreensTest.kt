@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -217,7 +218,7 @@ class ScreensTest {
         val wallpaper = Presets.all.first().wallpaper
         ActivityScenario.launch(CustomizeActivity::class.java).use { scenario ->
             compose.waitForIdle()
-            compose.onNodeWithText("Customize").assertExists()
+            compose.onNodeWithText("Make it yours").assertExists()
             shot("customize", wallpaper)
 
             compose.onNodeWithText("Icons").performClick()
@@ -225,14 +226,14 @@ class ScreensTest {
             shot("customize-icons", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
-            compose.onNodeWithText("Fonts and labels").performClick()
+            compose.onNodeWithText("Fonts").performClick()
             compose.onNode(hasScrollAction()).performScrollToNode(hasText("Add a font file"))
             compose.onNodeWithText("Add a font file").assertExists()
             compose.onNode(hasScrollAction()).performScrollToIndex(0)
             shot("customize-fonts", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
-            compose.onNodeWithText("Wallpaper and system colors").performClick()
+            compose.onNodeWithText("Wallpaper").performClick()
             compose.onNodeWithText("Make a gradient").assertExists()
             shot("customize-wallpaper", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
@@ -240,8 +241,7 @@ class ScreensTest {
             compose.onNodeWithText("Themes").performClick()
             compose.onNodeWithText("Ready-made looks").assertExists()
             shot("customize-themes", wallpaper)
-            compose.onNode(hasScrollAction() and hasAnyChild(hasText("Minimal Mono")))
-                .performScrollToIndex(Presets.all.indexOfFirst { it.name == "Neon" })
+            compose.onNodeWithTag("presets").performScrollToIndex(Presets.all.indexOfFirst { it.name == "Neon" })
             compose.onNodeWithText("Neon").performClick()
             compose.onNodeWithText("Use \"Neon\"?").assertExists()
             compose.onNodeWithText("Also set its wallpaper (home and lock screen)").performClick() // untick

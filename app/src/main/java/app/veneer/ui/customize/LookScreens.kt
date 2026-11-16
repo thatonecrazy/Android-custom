@@ -26,7 +26,15 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -53,6 +61,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -82,6 +91,7 @@ import app.veneer.ui.common.NoteText
 import app.veneer.ui.common.SectionHeader
 import app.veneer.ui.common.SettingCard
 import app.veneer.ui.common.SwitchRow
+import app.veneer.ui.common.WallpaperPreview
 import app.veneer.ui.launcher.AppIcon
 import app.veneer.ui.theme.LocalLauncherTheme
 import app.veneer.veneer
@@ -90,17 +100,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-
-fun WallpaperSpec.brush(): Brush {
-    val c1 = Color(color1)
-    val c2 = Color(color2)
-    return when (style) {
-        WallpaperStyle.Solid -> SolidColor(c1)
-        WallpaperStyle.Vertical -> Brush.verticalGradient(listOf(c1, c2))
-        WallpaperStyle.Diagonal -> Brush.linearGradient(listOf(c1, c2))
-        WallpaperStyle.Radial -> Brush.radialGradient(listOf(c1, c2))
-    }
-}
 
 /** Colors for themed icons and the accent, derived from the wallpaper's main color. */
 fun matchWallpaper(context: Context, theme: ThemeConfig): ThemeConfig? {
@@ -152,11 +151,17 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
         }
     }
 
-    SettingsPage("Themes", onBack, state, apps) {
+    SettingsPage("Themes", onBack, state, apps, section = Section.Themes) {
         item { SectionHeader("Ready-made looks") }
         item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(Presets.all, key = { it.name }) { preset -> PresetCard(preset, apps) { applying = preset } }
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.testTag("presets"),
+            ) {
+                items(Presets.all, key = { it.name }) { preset ->
+                    PresetCard(preset, apps, preset.name == theme.name) { applying = preset }
+                }
             }
         }
         item { NoteText("Applying a look keeps your apps and widgets where they are. Grid and dock size stay as you set them.") }
@@ -167,7 +172,7 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
                 ColorRow("Accent color", theme.accent, "Menus, highlights and these settings", allowAlpha = false) { c ->
                     app.store.updateTheme { it.copy(accent = c) }
                 }
-                ClickRow("Match my wallpaper", "Sets the accent and themed icon colors from your wallpaper") {
+                ClickRow("Match my wallpaper", "Sets the accent and themed icon colors from your wallpaper", icon = Icons.Filled.AutoAwesome) {
                     val next = matchWallpaper(context, theme)
                     if (next == null) Toast.makeText(context, "Couldn't read your wallpaper's colors", Toast.LENGTH_SHORT).show()
                     else app.store.updateTheme { next }
@@ -178,7 +183,7 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
         item { SectionHeader("Your themes") }
         item {
             SettingCard {
-                ClickRow("Save the current look", "Keep it so you can switch back any time") { saving = true }
+                ClickRow("Save the current look", "Keep it so you can switch back any time", icon = Icons.Filled.BookmarkAdd) { saving = true }
                 state.savedThemes.forEachIndexed { index, saved ->
                     ClickRow(
                         saved.name,
@@ -196,10 +201,10 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
         item { SectionHeader("Share") }
         item {
             SettingCard {
-                ClickRow("Export the current look", "Save it as a file you can send to another phone") {
+                ClickRow("Export the current look", "Save it as a file you can send to another phone", icon = Icons.Filled.IosShare) {
                     exportTheme.launch("${theme.name.ifBlank { "theme" }}.veneer-theme.json")
                 }
-                ClickRow("Import a theme file") { importTheme.launch(arrayOf("*/*")) }
+                ClickRow("Import a theme file", icon = Icons.Filled.FileOpen) { importTheme.launch(arrayOf("*/*")) }
             }
         }
     }
@@ -208,35 +213,46 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
     if (saving) SaveThemeDialog(state) { saving = false }
 }
 
+/** A tall card that looks like a tiny phone in that preset: wallpaper, clock and icons. */
 @Composable
-private fun PresetCard(preset: ThemeConfig, apps: List<AppEntry>, onClick: () -> Unit) {
+private fun PresetCard(preset: ThemeConfig, apps: List<AppEntry>, selected: Boolean, onClick: () -> Unit) {
     val app = LocalContext.current.veneer
     val font = remember(preset.fontId) { app.fonts.family(preset.fontId) }
-    val sample = remember(apps) { apps.take(3) }
-    Column(
-        Modifier
-            .width(150.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-    ) {
+    val sample = remember(apps) { apps.take(6) }
+    val ring = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+    Column(Modifier.width(132.dp).clickable(onClick = onClick)) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(92.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background((preset.wallpaper ?: WallpaperSpec()).brush()),
-            contentAlignment = Alignment.Center,
+                .height(212.dp)
+                .border(3.dp, ring, RoundedCornerShape(26.dp))
+                .padding(if (selected) 5.dp else 0.dp)
+                .clip(RoundedCornerShape(22.dp)),
         ) {
+            WallpaperPreview(preset.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
             CompositionLocalProvider(LocalLauncherTheme provides preset) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    sample.forEach { AppIcon(it, null, 34.dp) }
+                Column(Modifier.matchParentSize().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Spacer(Modifier.height(18.dp))
+                    Text("9:41", style = TextStyle(fontFamily = font, fontSize = 30.sp, color = Color(preset.labelColor)))
+                    Spacer(Modifier.weight(1f))
+                    sample.chunked(3).forEach { row ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            row.forEach { AppIcon(it, null, 28.dp) }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(30.dp)
+                            .clip(RoundedCornerShape(preset.dockCornerDp.coerceAtMost(15).dp))
+                            .background(Color(preset.dockBg)),
+                    )
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(preset.name, style = TextStyle(fontFamily = font, fontSize = 15.sp, fontWeight = FontWeight.Medium), maxLines = 1)
+        Text(preset.name, style = TextStyle(fontFamily = font, fontSize = 15.sp, fontWeight = FontWeight.Bold), maxLines = 1)
         Text(
             "${preset.iconShape.label} · ${preset.iconStyle.label}",
             style = MaterialTheme.typography.bodySmall,
@@ -247,7 +263,7 @@ private fun PresetCard(preset: ThemeConfig, apps: List<AppEntry>, onClick: () ->
 }
 
 @Composable
-private fun ApplyThemeDialog(theme: ThemeConfig, onDismiss: () -> Unit) {
+internal fun ApplyThemeDialog(theme: ThemeConfig, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val app = context.veneer
     var withWallpaper by remember { mutableStateOf(theme.wallpaper != null) }
@@ -314,7 +330,7 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
     val packs = remember { app.icons.packs.installedPacks() }
     fun update(transform: (ThemeConfig) -> ThemeConfig) = app.store.updateTheme(transform)
 
-    SettingsPage("Icons", onBack, state, apps) {
+    SettingsPage("Icons", onBack, state, apps, section = Section.IconsSection) {
         item { SectionHeader("Icon pack") }
         item {
             SettingCard {
@@ -326,7 +342,7 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
                         update { it.copy(iconPack = pack.packageName) }
                     }
                 }
-                ClickRow("Get icon packs", "Thousands of free and paid packs on the Play Store") {
+                ClickRow("Get icon packs", "Thousands of free and paid packs on the Play Store", icon = Icons.Filled.Storefront) {
                     val market = Intent(Intent.ACTION_VIEW, "market://search?q=icon%20pack&c=apps".toUri())
                     if (!SystemActions.open(context, market, quiet = true)) {
                         SystemActions.open(context, Intent(Intent.ACTION_VIEW, "https://play.google.com/store/search?q=icon%20pack&c=apps".toUri()))
@@ -354,6 +370,7 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
                         }
                     }
                     IconStyle.Grayscale -> NoteText("Every icon in black and white. Pairs well with a colorful wallpaper.")
+                    IconStyle.Vibrant -> NoteText("Turns up the colors of every icon so they pop off the wallpaper.")
                     IconStyle.Original -> {}
                 }
             }
@@ -379,7 +396,7 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
         }
         item {
             SettingCard {
-                ClickRow("Change a single app's icon", "Pick from any icon pack or use your own picture", onClick = openApps)
+                ClickRow("Change a single app's icon", "Pick from any icon pack or use your own picture", icon = Icons.Filled.Brush, onClick = openApps)
             }
         }
     }
@@ -444,7 +461,7 @@ fun FontsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) 
         }
     }
 
-    SettingsPage("Fonts and labels", onBack, state, apps) {
+    SettingsPage("Fonts", onBack, state, apps, section = Section.Fonts) {
         item { SectionHeader("Font") }
         item { NoteText("Used for app names, the app list, menus and every widget set to the theme font.") }
         item {
@@ -460,7 +477,7 @@ fun FontsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) 
         }
         item {
             SettingCard {
-                ClickRow("Add a font file", "Use any .ttf or .otf font saved on your phone") { importFont.launch(arrayOf("*/*")) }
+                ClickRow("Add a font file", "Use any .ttf or .otf font saved on your phone", icon = Icons.Filled.Add) { importFont.launch(arrayOf("*/*")) }
                 imported.filter { it.kind == FontKind.Imported }.forEach { font ->
                     ClickRow(
                         font.name,
@@ -490,8 +507,9 @@ fun FontsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) 
         item {
             SettingCard {
                 ClickRow(
-                    "Change the system font",
-                    "Only your phone's settings can change the font inside other apps. Samsung, Xiaomi, OPPO, vivo, " +
+                    icon = Icons.Filled.PhoneAndroid,
+                    title = "Change the system font",
+                    subtitle = "Only your phone's settings can change the font inside other apps. Samsung, Xiaomi, OPPO, vivo, " +
                         "OnePlus and others have a font picker there; Pixels offer size and bold text.",
                 ) { SystemActions.openDisplaySettings(context) }
             }

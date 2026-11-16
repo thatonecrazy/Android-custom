@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,10 +44,10 @@ import kotlin.math.roundToInt
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        style = MaterialTheme.typography.labelLarge,
+        style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.SemiBold,
-        modifier = modifier.padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 6.dp),
+        fontWeight = FontWeight.Bold,
+        modifier = modifier.padding(start = 22.dp, end = 20.dp, top = 22.dp, bottom = 8.dp),
     )
 }
 
@@ -53,7 +55,7 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
 fun SettingCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(
         modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(26.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(Modifier.padding(vertical = 4.dp)) { content() }
@@ -70,11 +72,26 @@ fun NoteText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+/** A soft colored circle with an icon, used at the start of setting rows. */
+@Composable
+fun IconBadge(icon: ImageVector, size: Int = 40) {
+    Box(
+        Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size((size * 0.55f).dp))
+    }
+}
+
 @Composable
 fun ClickRow(
     title: String,
     subtitle: String? = null,
-    leading: (@Composable () -> Unit)? = null,
+    icon: ImageVector? = null,
+    leading: (@Composable () -> Unit)? = icon?.let { { IconBadge(it) } },
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     onClick: () -> Unit,
@@ -94,6 +111,7 @@ fun ClickRow(
             Text(
                 title,
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             )
             if (subtitle != null) {
@@ -114,10 +132,18 @@ fun ClickRow(
 }
 
 @Composable
-fun SwitchRow(title: String, checked: Boolean, subtitle: String? = null, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+    onChange: (Boolean) -> Unit,
+) {
     ClickRow(
         title = title,
         subtitle = subtitle,
+        icon = icon,
         enabled = enabled,
         trailing = { Switch(checked = checked, onCheckedChange = onChange, enabled = enabled) },
         onClick = { onChange(!checked) },

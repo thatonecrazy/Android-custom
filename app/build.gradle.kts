@@ -19,8 +19,8 @@ android {
         applicationId = "app.veneer.launcher"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     signingConfigs {
@@ -92,5 +92,5 @@ dependencies {
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
     debugImplementation(libs.compose.ui.test.manifest)
-    robolectricAndroid("org.robolectric:android-all-instrumented:16-robolectric-13921718-2-i7")
+    robolectricAndroid(libs.robolectric.android.all)
 }

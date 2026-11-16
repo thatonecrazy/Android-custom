@@ -39,6 +39,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -182,9 +185,15 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
                 FilledTonalButton(
                     onClick = { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Use a picture") }
+                ) {
+                    Icon(Icons.Filled.Image, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Use a picture")
+                }
                 packs.forEach { info ->
                     FilledTonalButton(onClick = { browsingPack = info }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Category, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
                         Text("Pick from ${info.label}", maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
@@ -199,7 +208,11 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
                     onClick = { app.store.updateOverride(entry.key.id) { it.copy(icon = null) } },
                     enabled = override?.icon != null,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Back to the theme's icon") }
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Back to the theme's icon")
+                }
             }
 
             SectionHeader("App list")

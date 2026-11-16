@@ -18,7 +18,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -54,6 +63,8 @@ import app.veneer.ui.common.ColorRow
 import app.veneer.ui.common.NoteText
 import app.veneer.ui.common.SectionHeader
 import app.veneer.ui.common.SettingCard
+import app.veneer.ui.common.SwitchRow
+import app.veneer.ui.common.WallpaperPreview
 import app.veneer.ui.launcher.AppIcon
 import app.veneer.veneer
 import kotlinx.coroutines.Dispatchers
@@ -83,15 +94,15 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
         }
     }
 
-    SettingsPage("Wallpaper and system colors", onBack, state, apps) {
+    SettingsPage("Wallpaper", onBack, state, apps, section = Section.Wallpaper) {
         if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) }
         item { SectionHeader("Picture") }
         item {
             SettingCard {
-                ClickRow("Choose a picture", "From your photos") {
+                ClickRow("Choose a picture", "From your photos", icon = Icons.Filled.Image) {
                     pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
-                ClickRow("Your phone's wallpaper screen", "Live wallpapers, your phone maker's collections and color options") {
+                ClickRow("Your phone's wallpaper screen", "Live wallpapers, your phone maker's collections and color options", icon = Icons.Filled.Wallpaper) {
                     SystemActions.open(context, Intent(Intent.ACTION_SET_WALLPAPER))
                 }
             }
@@ -99,13 +110,13 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
         item { SectionHeader("Make a gradient") }
         item {
             SettingCard {
-                Box(
+                WallpaperPreview(
+                    spec,
                     Modifier
                         .padding(16.dp)
                         .fillMaxWidth()
-                        .height(140.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(spec.brush()),
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(24.dp)),
                 )
                 ChoiceRow("Style", WallpaperStyle.entries, spec.style, { it.label }) { spec = spec.copy(style = it) }
                 ColorRow(if (spec.style == WallpaperStyle.Solid) "Color" else "First color", spec.color1, allowAlpha = false) {
@@ -113,6 +124,13 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                 }
                 if (spec.style != WallpaperStyle.Solid) {
                     ColorRow("Second color", spec.color2, allowAlpha = false) { spec = spec.copy(color2 = it) }
+                    val third = spec.color3
+                    SwitchRow("Add a third color", third != null) { on ->
+                        spec = spec.copy(color3 = if (on) 0xFFFFC93C.toInt() else null)
+                    }
+                    if (third != null) {
+                        ColorRow("Third color", third, allowAlpha = false) { spec = spec.copy(color3 = it) }
+                    }
                 }
                 Button(
                     onClick = {
@@ -138,7 +156,7 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                         "the keyboard and apps that follow Material You) from the wallpaper. A gradient from here is the " +
                         "easiest way to choose those colors.",
                 )
-                ClickRow("Dark theme, display and font size", "Your phone's display settings") {
+                ClickRow("Dark theme, display and font size", "Your phone's display settings", icon = Icons.Filled.DarkMode) {
                     SystemActions.openDisplaySettings(context)
                 }
             }
@@ -174,7 +192,7 @@ fun AppsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, o
             q.isEmpty() || normalizeForSearch(state.overrides[e.key.id]?.label ?: e.label).contains(q)
         }
     }
-    SettingsPage("Individual apps", onBack, state, apps, preview = false) {
+    SettingsPage("Single apps", onBack, state, apps, preview = false, section = Section.Apps) {
         item {
             OutlinedTextField(
                 value = query,
@@ -238,15 +256,15 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
     }
 
-    SettingsPage("Backup and about", onBack, state, emptyList(), preview = false) {
+    SettingsPage("Backup", onBack, state, emptyList(), preview = false, section = Section.Backup) {
         item { SectionHeader("Backup") }
         item {
             SettingCard {
-                ClickRow("Save a backup", "Your theme, home screen layout, app names, hidden apps and saved themes") {
+                ClickRow("Save a backup", "Your theme, home screen layout, app names, hidden apps and saved themes", icon = Icons.Filled.Save) {
                     val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
                     export.launch("veneer-backup-$day.json")
                 }
-                ClickRow("Restore a backup") { import.launch(arrayOf("*/*")) }
+                ClickRow("Restore a backup", icon = Icons.Filled.Restore) { import.launch(arrayOf("*/*")) }
             }
         }
         item {
@@ -255,12 +273,12 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         item { SectionHeader("Start over") }
         item {
             SettingCard {
-                ClickRow("Reset the look", "Back to the default icons, font and colors. Keeps your layout.") {
+                ClickRow("Reset the look", "Back to the default icons, font and colors. Keeps your layout.", icon = Icons.Filled.Refresh) {
                     confirm = "Reset icons, font and colors to the defaults?" to {
                         app.store.updateTheme { it.withLookOf(ThemeConfig()) }
                     }
                 }
-                ClickRow("Reset the home screen", "Removes everything from your home screen and dock and sets up the starter layout again") {
+                ClickRow("Reset the home screen", "Removes everything from your home screen and dock and sets up the starter layout again", icon = Icons.Filled.Home) {
                     confirm = "Clear your home screen and dock?" to {
                         app.store.update { it.copy(items = emptyList(), pageCount = 1, firstRunDone = false) }
                     }
@@ -270,9 +288,8 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         item { SectionHeader("About") }
         item {
             SettingCard {
-                ClickRow("Veneer $version", "A home screen you can restyle from top to bottom")
-                    {}
-                ClickRow("Font licenses", "The bundled fonts are free under the SIL Open Font License") {
+                ClickRow("Veneer $version", "A home screen you can restyle from top to bottom", icon = Icons.Filled.Favorite) {}
+                ClickRow("Font licenses", "The bundled fonts are free under the SIL Open Font License", icon = Icons.Filled.Description) {
                     scope.launch {
                         licenses = withContext(Dispatchers.IO) {
                             runCatching { context.assets.open("font_licenses.txt").use { it.readBytes().decodeToString() } }.getOrNull()

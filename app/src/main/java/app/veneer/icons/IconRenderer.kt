@@ -57,7 +57,21 @@ object IconRenderer {
             source == IconSource.Pack -> drawFit(canvas, drawable, sizePx, 1f)
             else -> drawLegacy(canvas, drawable, sizePx, spec)
         }
-        return if (spec.style == IconStyle.Grayscale) grayscale(bitmap) else bitmap
+        return finish(bitmap, spec.style)
+    }
+
+    private fun finish(bitmap: Bitmap, style: IconStyle): Bitmap = when (style) {
+        IconStyle.Grayscale -> recolor(bitmap, ColorMatrix().apply { setSaturation(0f) })
+        IconStyle.Vibrant -> recolor(bitmap, vividMatrix)
+        else -> bitmap
+    }
+
+    /** More saturation and a little more contrast, so colors jump off the wallpaper. */
+    private val vividMatrix = ColorMatrix().apply {
+        setSaturation(1.5f)
+        val c = 1.08f
+        val t = (1f - c) * 128f
+        postConcat(ColorMatrix(floatArrayOf(c, 0f, 0f, 0f, t, 0f, c, 0f, 0f, t, 0f, 0f, c, 0f, t, 0f, 0f, 0f, 1f, 0f)))
     }
 
     private fun drawAdaptive(canvas: Canvas, icon: AdaptiveIconDrawable, sizePx: Int, spec: IconSpec, source: IconSource) {
@@ -131,7 +145,7 @@ object IconRenderer {
                 upon.draw(canvas)
             }
         }
-        return if (spec.style == IconStyle.Grayscale) grayscale(result) else result
+        return finish(result, spec.style)
     }
 
     /** Erases everything outside [path], with anti-aliased edges. */
@@ -197,11 +211,9 @@ object IconRenderer {
         return coverage in 0.03f..0.55f
     }
 
-    private fun grayscale(src: Bitmap): Bitmap {
+    private fun recolor(src: Bitmap, matrix: ColorMatrix): Bitmap {
         val out = createBitmap(src.width, src.height)
-        val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-            colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
-        }
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(matrix) }
         Canvas(out).drawBitmap(src, 0f, 0f, paint)
         src.recycle()
         return out

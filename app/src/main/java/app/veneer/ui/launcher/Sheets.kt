@@ -13,11 +13,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Wallpaper
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,7 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.size
+import app.veneer.ui.theme.Vivid
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -50,7 +57,7 @@ import app.veneer.data.LayoutOps
 import app.veneer.data.WidgetAlign
 import app.veneer.data.WallpaperSpec
 import app.veneer.data.WidgetStyle
-import app.veneer.ui.customize.brush
+import app.veneer.ui.common.WallpaperPreview
 import app.veneer.ui.common.ChoiceRow
 import app.veneer.ui.common.ClickRow
 import app.veneer.ui.common.ColorRow
@@ -60,11 +67,19 @@ import app.veneer.ui.common.SectionHeader
 import app.veneer.ui.common.SwitchRow
 
 @Composable
-private fun SheetRow(icon: ImageVector, title: String, subtitle: String? = null, onClick: () -> Unit) {
+private fun SheetRow(icon: ImageVector, color: Color, title: String, subtitle: String? = null, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(title) },
+        headlineContent = { Text(title, fontWeight = FontWeight.Bold) },
         supportingContent = subtitle?.let { { Text(it) } },
-        leadingContent = { Icon(icon, contentDescription = null) },
+        leadingContent = {
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(color, lerp(color, Color.White, 0.25f)))),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = Color.White) }
+        },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickableRow(onClick),
     )
@@ -86,25 +101,26 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(Modifier.padding(bottom = 24.dp)) {
-            SheetRow(Icons.Filled.Add, "Widgets", "Clocks, search and widgets from your apps") {
+            SheetRow(Icons.Filled.Widgets, Vivid.Teal, "Widgets", "Clocks, search and widgets from your apps") {
                 controller.homeMenuOpen = false
                 controller.widgetPickerOpen = true
             }
-            SheetRow(Icons.Filled.Face, "Wallpaper", "Pictures, gradients and system colors") {
+            SheetRow(Icons.Filled.Wallpaper, Vivid.Purple, "Wallpaper", "Pictures, gradients and system colors") {
                 controller.homeMenuOpen = false
                 actions.openCustomize("wallpaper")
             }
-            SheetRow(Icons.Filled.Edit, "Customize", "Icons, fonts, themes, grid and dock") {
+            SheetRow(Icons.Filled.Palette, Vivid.Pink, "Customize", "Icons, fonts, themes, grid and dock") {
                 controller.homeMenuOpen = false
                 actions.openCustomize()
             }
-            SheetRow(Icons.Filled.Home, "Add a page") {
+            SheetRow(Icons.Filled.AddCircle, Vivid.Green, "Add a page") {
                 controller.homeMenuOpen = false
                 controller.addPage()
             }
             if (state.pageCount > 1) {
                 SheetRow(
                     Icons.Filled.Delete,
+                    Vivid.Coral,
                     "Remove this page",
                     if (itemsOnPage > 0) "Also removes the $itemsOnPage things on it" else "It's empty",
                 ) {
@@ -116,7 +132,7 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
                     }
                 }
             }
-            SheetRow(Icons.Filled.Settings, "Phone settings") {
+            SheetRow(Icons.Filled.Settings, Vivid.Blue, "Phone settings") {
                 controller.homeMenuOpen = false
                 app.veneer.system.SystemActions.open(
                     controller.app.applicationContext,
@@ -169,9 +185,9 @@ fun WidgetStyleSheet(controller: HomeController, itemId: Long) {
                     .padding(16.dp)
                     .fillMaxWidth()
                     .height(if (item.spanY > 1) 150.dp else 90.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background((state.theme.wallpaper ?: WallpaperSpec()).brush()),
+                    .clip(RoundedCornerShape(20.dp)),
             ) {
+                WallpaperPreview(state.theme.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
                 BuiltinWidgetView(content.kind, style)
             }
             SectionHeader("Font")

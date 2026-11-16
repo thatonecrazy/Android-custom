@@ -21,6 +21,7 @@ enum class IconShape(val label: String) {
 @Serializable
 enum class IconStyle(val label: String) {
     Original("Full color"),
+    Vibrant("Extra vivid"),
     Themed("Themed"),
     Grayscale("Grayscale"),
 }
@@ -37,6 +38,7 @@ enum class WallpaperStyle(val label: String) {
     Vertical("Vertical"),
     Diagonal("Diagonal"),
     Radial("Glow"),
+    Aurora("Aurora"),
 }
 
 /** A wallpaper the app can generate itself: a solid color or a two-color gradient. */
@@ -45,6 +47,8 @@ data class WallpaperSpec(
     val style: WallpaperStyle = WallpaperStyle.Vertical,
     val color1: Int = 0xFF1D2671.toInt(),
     val color2: Int = 0xFFC33764.toInt(),
+    /** An optional third color, for three-color gradients and aurora glows. */
+    val color3: Int? = null,
 )
 
 /**
@@ -95,7 +99,7 @@ data class ThemeConfig(
     val drawerTextColor: Int = 0xFFFFFFFF.toInt(),
 
     // Accent used for menus, highlights and the settings screens
-    val accent: Int = 0xFF8AB4F8.toInt(),
+    val accent: Int = 0xFF8C7BFF.toInt(),
 
     /** Optional wallpaper that goes with this theme (presets use it). */
     val wallpaper: WallpaperSpec? = null,

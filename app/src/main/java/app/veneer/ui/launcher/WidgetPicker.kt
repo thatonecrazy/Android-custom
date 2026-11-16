@@ -55,7 +55,7 @@ import androidx.core.graphics.drawable.toBitmap
 import app.veneer.data.BuiltinKind
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
-import app.veneer.ui.customize.brush
+import app.veneer.ui.common.WallpaperPreview
 import app.veneer.widgets.WidgetGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -184,9 +184,9 @@ private fun BuiltinCard(kind: BuiltinKind, theme: ThemeConfig, onClick: () -> Un
             Modifier
                 .fillMaxWidth()
                 .height(90.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background((theme.wallpaper ?: WallpaperSpec()).brush()),
+                .clip(RoundedCornerShape(14.dp)),
         ) {
+            WallpaperPreview(theme.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
             BuiltinWidgetView(kind, HomeController.defaultStyle(kind))
         }
         Spacer(Modifier.height(8.dp))

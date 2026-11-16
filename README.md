@@ -2,7 +2,7 @@
 
 A home-screen app for Android that lets you restyle what you see every day: every app icon, the fonts, the widgets, the app list, the wallpaper and the system colors that follow it.
 
-![All nine themes](docs/themes.png)
+![All twelve themes](docs/themes.png)
 
 ![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
 
@@ -21,7 +21,7 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 **Icons**
 - Any icon pack in the common ADW/Nova format (most packs on the Play Store), including packs that theme apps they don't cover.
 - Eight shapes: system, circle, squircle, rounded, square, teardrop, leaf, hexagon.
-- Full color, grayscale, or themed: one-color symbols in your own two colors, using the one-color icons apps ship for Android 13 and newer, and a tinted logo for many apps that don't.
+- Full color, extra vivid (turns up every icon's colors), grayscale, or themed: one-color symbols in your own two colors, using the one-color icons apps ship for Android 13 and newer, and a tinted logo for many apps that don't.
 - Icon size, and a matching background for old-style square icons.
 - Per app: an icon from any pack, your own picture, a new name, or hide it from the app list.
 
@@ -41,11 +41,11 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - App list columns, background and text color.
 
 **Wallpaper and system colors**
-- Set a picture as wallpaper, or generate a solid, vertical, diagonal or glow gradient.
+- Set a picture as wallpaper, or generate one: solid, vertical, diagonal, glow, or aurora (soft overlapping glows), with two or three colors.
 - On Android 12 and newer the phone takes its system colors (quick settings, Settings, keyboard, Material You apps) from the wallpaper, so the gradient maker doubles as a system color picker.
 
 **Themes**
-- Nine ready-made looks, each with a matching wallpaper: Default, Minimal Mono, Paper, Neon, Terminal, Playful, Elegant, Glass, Leaf.
+- Twelve ready-made looks, each with a matching wallpaper: Default, Sunset, Candy, Ocean, Neon, Playful, Glass, Leaf, Paper, Minimal Mono, Terminal, Elegant.
 - Save your own looks, export them to a file to share, import theme files.
 - Back up and restore your whole setup.
 

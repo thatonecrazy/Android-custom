@@ -13,13 +13,18 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +57,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -233,5 +239,35 @@ fun HostedWidget(appWidgetId: Int, host: WidgetHost, modifier: Modifier = Modifi
             .onSizeChanged { size ->
                 host.updateSize(view, size.width / density.density, size.height / density.density)
             },
+    )
+}
+
+/** A rounded popup menu used for every hold-to-open menu on the home screen and in the app list. */
+@Composable
+fun FriendlyMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        shape = RoundedCornerShape(22.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        content = content,
+    )
+}
+
+/** One menu option with a small colored icon in front. */
+@Composable
+fun MenuRow(text: String, icon: ImageVector, tint: Color, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(text, fontWeight = FontWeight.Medium) },
+        leadingIcon = {
+            Box(
+                Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(tint.copy(alpha = 0.22f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(17.dp)) }
+        },
+        onClick = onClick,
     )
 }

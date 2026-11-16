@@ -3,7 +3,9 @@ package app.veneer.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -17,9 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import app.veneer.R
 import app.veneer.data.ThemeConfig
 
 val LocalLauncherTheme = compositionLocalOf { ThemeConfig() }
@@ -103,6 +110,37 @@ fun LauncherTheme(theme: ThemeConfig, font: FontFamily, content: @Composable () 
     }
 }
 
+/** Bright colors for Veneer's own screens. Each Customize section has its own pair. */
+object Vivid {
+    val Violet = Color(0xFF7C5CFF)
+    val Pink = Color(0xFFFF4D8D)
+    val Orange = Color(0xFFFF8A3D)
+    val Amber = Color(0xFFFFB020)
+    val Teal = Color(0xFF12C2A9)
+    val Blue = Color(0xFF3D7BFF)
+    val Sky = Color(0xFF2EC5FF)
+    val Green = Color(0xFF22C55E)
+    val Purple = Color(0xFFB04DFF)
+    val Coral = Color(0xFFFF5E62)
+    val Slate = Color(0xFF64748B)
+}
+
+/** The rounded, friendly font used across Veneer's own screens. */
+val FriendlyFont = FontFamily(Font(R.font.outfit_regular, FontWeight.Normal), Font(R.font.outfit_bold, FontWeight.Bold))
+
+/**
+ * Readable on a light background: bright colors are deepened for text and controls, keeping their
+ * saturation (mixing in black would turn orange into brown).
+ */
+fun Color.readableOnLight(): Color {
+    if (luminance() <= 0.3f) return this
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(toArgb(), hsv)
+    hsv[1] = (hsv[1] * 1.12f).coerceAtMost(1f)
+    hsv[2] = hsv[2].coerceAtMost(0.8f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
 /** The look of the Customize screens: follows the phone's light/dark setting and the theme accent. */
 @Composable
 fun SettingsTheme(theme: ThemeConfig, font: FontFamily, useWallpaperColors: Boolean = false, content: @Composable () -> Unit) {
@@ -113,7 +151,37 @@ fun SettingsTheme(theme: ThemeConfig, font: FontFamily, useWallpaperColors: Bool
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else -> remember(theme.accent, dark) { accentScheme(Color(theme.accent), dark) }
     }
-    MaterialTheme(colorScheme = scheme, typography = Typography()) {
+    MaterialTheme(colorScheme = scheme, typography = Typography().withFont(FriendlyFont), shapes = FriendlyShapes) {
         CompositionLocalProvider(LocalLauncherTheme provides theme, LocalThemeFont provides font, content = content)
     }
+}
+
+private val FriendlyShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp),
+)
+
+/** Re-tints switches, sliders, chips, headers and cards with one bright [color]. */
+@Composable
+fun SectionColors(color: Color, content: @Composable () -> Unit) {
+    val base = MaterialTheme.colorScheme
+    val dark = isSystemInDarkTheme()
+    val main = if (dark) color else color.readableOnLight()
+    val scheme = remember(base, color, dark) {
+        base.copy(
+            primary = main,
+            onPrimary = contentColorFor(main),
+            primaryContainer = color.copy(alpha = if (dark) 0.32f else 0.2f).compositeOver(base.surface),
+            onPrimaryContainer = base.onSurface,
+            secondary = main,
+            secondaryContainer = color.copy(alpha = if (dark) 0.3f else 0.18f).compositeOver(base.surface),
+            onSecondaryContainer = base.onSurface,
+            surfaceContainerHigh = color.copy(alpha = if (dark) 0.12f else 0.08f).compositeOver(base.surfaceContainerLow),
+            surfaceContainerHighest = color.copy(alpha = if (dark) 0.2f else 0.13f).compositeOver(base.surfaceContainerLow),
+        )
+    }
+    MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes, content = content)
 }

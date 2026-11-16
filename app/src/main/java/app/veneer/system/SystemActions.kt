@@ -19,6 +19,7 @@ import android.os.Build
 import android.provider.AlarmClock
 import android.provider.Settings
 import android.widget.Toast
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.createBitmap
 import androidx.core.net.toUri
 import app.veneer.data.WallpaperSpec
@@ -106,17 +107,46 @@ object Wallpapers {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)
         val w = width.toFloat()
         val h = height.toFloat()
+        val stops = listOfNotNull(spec.color1, spec.color2, spec.color3).toIntArray()
         paint.shader = when (spec.style) {
-            WallpaperStyle.Solid -> null
-            WallpaperStyle.Vertical -> LinearGradient(0f, 0f, 0f, h, spec.color1, spec.color2, Shader.TileMode.CLAMP)
-            WallpaperStyle.Diagonal -> LinearGradient(0f, 0f, w, h, spec.color1, spec.color2, Shader.TileMode.CLAMP)
+            WallpaperStyle.Solid, WallpaperStyle.Aurora -> null
+            WallpaperStyle.Vertical -> LinearGradient(0f, 0f, 0f, h, stops, null, Shader.TileMode.CLAMP)
+            WallpaperStyle.Diagonal -> LinearGradient(0f, 0f, w, h, stops, null, Shader.TileMode.CLAMP)
             WallpaperStyle.Radial -> RadialGradient(
-                w / 2f, h * 0.35f, max(hypot(w, h) * 0.6f, 1f), spec.color1, spec.color2, Shader.TileMode.CLAMP,
+                w / 2f, h * 0.35f, max(hypot(w, h) * 0.6f, 1f), stops, null, Shader.TileMode.CLAMP,
             )
         }
         if (spec.style == WallpaperStyle.Solid) paint.color = spec.color1
-        canvas.drawRect(0f, 0f, w, h, paint)
+        if (spec.style == WallpaperStyle.Aurora) {
+            drawAurora(canvas, spec, w, h)
+        } else {
+            canvas.drawRect(0f, 0f, w, h, paint)
+        }
         return bmp
+    }
+
+    /** Soft overlapping glows of each color on a deep base, like a mesh gradient. */
+    private fun drawAurora(canvas: Canvas, spec: WallpaperSpec, w: Float, h: Float) {
+        val third = spec.color3 ?: ColorUtils.blendARGB(spec.color1, spec.color2, 0.5f)
+        val base = ColorUtils.blendARGB(spec.color1, 0xFF000000.toInt(), 0.55f)
+        canvas.drawColor(base)
+        val glows = listOf(
+            Triple(spec.color1, floatArrayOf(0.15f, 0.12f), 0.85f),
+            Triple(spec.color2, floatArrayOf(0.95f, 0.45f), 0.8f),
+            Triple(third, floatArrayOf(0.25f, 0.88f), 0.85f),
+            Triple(spec.color2, floatArrayOf(0.6f, 0.72f), 0.45f),
+        )
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)
+        for ((color, at, size) in glows) {
+            val r = max(w, h) * size
+            val solid = color or 0xFF000000.toInt()
+            paint.shader = RadialGradient(
+                w * at[0], h * at[1], r,
+                intArrayOf(solid, ColorUtils.setAlphaComponent(solid, 0x80), ColorUtils.setAlphaComponent(solid, 0)),
+                floatArrayOf(0f, 0.45f, 1f), Shader.TileMode.CLAMP,
+            )
+            canvas.drawRect(0f, 0f, w, h, paint)
+        }
     }
 
     private fun screenSize(context: Context): Pair<Int, Int> {

@@ -3,9 +3,11 @@ package app.veneer.ui.customize
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,29 +20,36 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,10 +58,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -62,29 +74,36 @@ import app.veneer.data.BuiltinKind
 import app.veneer.data.DOCK_PAGE
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
+import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
+import app.veneer.data.WallpaperSpec
 import app.veneer.system.SystemActions
-import app.veneer.ui.common.ClickRow
 import app.veneer.ui.common.EditAppScreen
-import app.veneer.ui.common.NoteText
-import app.veneer.ui.common.SettingCard
+import app.veneer.ui.common.WallpaperPreview
+import app.veneer.ui.launcher.AppIcon
 import app.veneer.ui.launcher.AppTile
 import app.veneer.ui.launcher.BuiltinWidgetView
 import app.veneer.ui.launcher.HomeController
 import app.veneer.ui.theme.LauncherTheme
+import app.veneer.ui.theme.LocalLauncherTheme
+import app.veneer.ui.theme.SectionColors
 import app.veneer.ui.theme.SettingsTheme
+import app.veneer.ui.theme.Vivid
 import app.veneer.veneer
 
-enum class Section(val id: String, val title: String, val subtitle: String, val icon: ImageVector) {
-    Themes("themes", "Themes", "One-tap looks, saved themes, sharing", Icons.Filled.Palette),
-    IconsSection("icons", "Icons", "Icon packs, shapes, themed icons, size", Icons.Filled.Category),
-    Fonts("fonts", "Fonts and labels", "Bundled fonts, your own font files, label style", Icons.Filled.TextFields),
-    HomeLayout("home", "Home screen and dock", "Grid, dock, status bar, gestures", Icons.Filled.Home),
-    Drawer("drawer", "App list", "Columns and colors of the app drawer", Icons.AutoMirrored.Filled.ViewList),
-    Wallpaper("wallpaper", "Wallpaper and system colors", "Pictures, gradients, Material You colors", Icons.Filled.Wallpaper),
-    Apps("apps", "Individual apps", "Change one app's icon or name, hide apps", Icons.Filled.Apps),
-    Backup("backup", "Backup and about", "Save or restore everything, licenses", Icons.Filled.Backup),
+enum class Section(val id: String, val title: String, val subtitle: String, val icon: ImageVector, val colors: List<Color>) {
+    Themes("themes", "Themes", "One-tap looks", Icons.Filled.Palette, listOf(Vivid.Pink, Vivid.Violet)),
+    IconsSection("icons", "Icons", "Shapes, packs, styles", Icons.Filled.Category, listOf(Vivid.Orange, Vivid.Coral)),
+    Fonts("fonts", "Fonts", "13 fonts, or your own", Icons.Filled.TextFields, listOf(Vivid.Teal, Vivid.Sky)),
+    HomeLayout("home", "Home screen", "Grid, dock, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
+    Drawer("drawer", "App list", "Columns and colors", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
+    Wallpaper("wallpaper", "Wallpaper", "Gradients, system colors", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
+    Apps("apps", "Single apps", "Rename, re-icon, hide", Icons.Filled.Brush, listOf(Vivid.Amber, Vivid.Orange)),
+    Backup("backup", "Backup", "Save and restore", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
     ;
+
+    val color: Color get() = colors.first()
+    val brush: Brush get() = Brush.linearGradient(colors)
 
     companion object {
         fun from(id: String?) = entries.firstOrNull { it.id == id }
@@ -116,7 +135,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
     SettingsTheme(state.theme, font) {
         val editing = editingAppId?.let { id -> apps.firstOrNull { it.key.id == id } }
         when {
-            editing != null -> EditAppScreen(editing) { editingAppId = null }
+            editing != null -> SectionColors(Section.Apps.color) { EditAppScreen(editing) { editingAppId = null } }
             section == null -> {
                 BackHandler(onBack = onFinish)
                 MainMenu(state, apps, onOpen = { sectionId = it.id }, onClose = onFinish)
@@ -124,15 +143,17 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
             else -> {
                 val back = { if (initialSection != null && section.id == initialSection) onFinish() else sectionId = null }
                 BackHandler(onBack = back)
-                when (section) {
-                    Section.Themes -> ThemesScreen(state, apps, back)
-                    Section.IconsSection -> IconsScreen(state, apps, back, openApps = { sectionId = Section.Apps.id })
-                    Section.Fonts -> FontsScreen(state, apps, back)
-                    Section.HomeLayout -> HomeLayoutScreen(state, apps, back)
-                    Section.Drawer -> DrawerScreen(state, apps, back)
-                    Section.Wallpaper -> WallpaperScreen(state, apps, back)
-                    Section.Apps -> AppsScreen(state, apps, back) { editingAppId = it.key.id }
-                    Section.Backup -> BackupScreen(state, back)
+                SectionColors(section.color) {
+                    when (section) {
+                        Section.Themes -> ThemesScreen(state, apps, back)
+                        Section.IconsSection -> IconsScreen(state, apps, back, openApps = { sectionId = Section.Apps.id })
+                        Section.Fonts -> FontsScreen(state, apps, back)
+                        Section.HomeLayout -> HomeLayoutScreen(state, apps, back)
+                        Section.Drawer -> DrawerScreen(state, apps, back)
+                        Section.Wallpaper -> WallpaperScreen(state, apps, back)
+                        Section.Apps -> AppsScreen(state, apps, back) { editingAppId = it.key.id }
+                        Section.Backup -> BackupScreen(state, back)
+                    }
                 }
             }
         }
@@ -150,6 +171,7 @@ fun SettingsPage(
     state: LauncherState,
     apps: List<AppEntry>,
     preview: Boolean = true,
+    section: Section? = null,
     content: LazyListScope.() -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -160,16 +182,27 @@ fun SettingsPage(
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.surface,
-            shape = if (preview) RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp) else RoundedCornerShape(0.dp),
+            shape = if (preview) RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) else RoundedCornerShape(0.dp),
         ) {
             Column(
                 Modifier.windowInsetsPadding(
                     if (preview) WindowInsets.navigationBars.union(WindowInsets.ime) else WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.ime),
                 ),
             ) {
-                Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                    Text(title, style = MaterialTheme.typography.titleLarge)
+                Row(Modifier.padding(start = 12.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    FilledTonalIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    Spacer(Modifier.width(12.dp))
+                    if (section != null) {
+                        Box(
+                            Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(section.brush),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(section.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
                 LazyColumn(Modifier.fillMaxSize(), content = {
                     content()
@@ -233,56 +266,162 @@ fun ThemePreview(state: LauncherState, apps: List<AppEntry>, modifier: Modifier 
 private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Section) -> Unit, onClose: () -> Unit) {
     val context = LocalContext.current
     var isDefault by remember { mutableStateOf(SystemActions.isDefaultLauncher(context)) }
+    var applying by remember { mutableStateOf<ThemeConfig?>(null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { isDefault = SystemActions.isDefaultLauncher(context) }
-    SettingsPage("Customize", onClose, state, apps) {
-        if (!isDefault) {
-            item {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                ) {
-                    Column(Modifier.padding(20.dp)) {
-                        Text("Make Veneer your home screen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            "Your icons, fonts and widgets show up once Veneer is your home app. You can switch back any time in your phone's settings.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { (context as? Activity)?.let { SystemActions.requestDefaultLauncher(it) } }) {
-                            Text("Set as home app")
-                        }
-                    }
-                }
-            }
-        }
+    SettingsPage("Make it yours", onClose, state, apps) {
         item {
-            SettingCard {
-                Section.entries.forEach { s ->
-                    ClickRow(
-                        title = s.title,
-                        subtitle = s.subtitle,
-                        leading = {
-                            Box(
-                                Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                                contentAlignment = Alignment.Center,
-                            ) { Icon(s.icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
-                        },
-                        onClick = { onOpen(s) },
-                    )
-                }
-            }
-        }
-        item {
-            NoteText(
-                "Android doesn't let any app restyle the system itself or other apps' screens. Veneer restyles " +
-                    "everything you see on the home screen: every app icon, the app list, fonts and widgets. Wallpapers " +
-                    "you set here also recolor the system on Android 12 and newer.",
+            Text(
+                "Pick a look in one tap, or fine-tune every detail.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 8.dp),
             )
         }
+        if (!isDefault) {
+            item {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Brush.linearGradient(listOf(Vivid.Violet, Vivid.Pink)))
+                        .padding(20.dp),
+                ) {
+                    Text("Make Veneer your home screen", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Your icons, fonts and widgets show up once Veneer is your home app. You can switch back any time.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    Button(
+                        onClick = { (context as? Activity)?.let { SystemActions.requestDefaultLauncher(it) } },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Vivid.Violet),
+                    ) { Text("Set as home app", fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+        item {
+            Text(
+                "Quick looks",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 22.dp, top = 14.dp, bottom = 10.dp),
+            )
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                items(Presets.all, key = { it.name }) { preset -> LookBubble(preset, apps, preset.name == state.theme.name) { applying = preset } }
+            }
+        }
+        item {
+            Text(
+                "Customize",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 22.dp, top = 22.dp, bottom = 10.dp),
+            )
+        }
+        Section.entries.chunked(2).forEach { row ->
+            item(key = row.first().id) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    row.forEach { s -> SectionTile(s, Modifier.weight(1f)) { onOpen(s) } }
+                }
+            }
+        }
+        item {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(16.dp),
+            ) {
+                Icon(Icons.Filled.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "Android doesn't let apps restyle the system or other apps' screens, so Veneer restyles everything " +
+                        "on your home screen: icons, the app list, fonts and widgets. Wallpapers you set here also " +
+                        "recolor the system on Android 12 and newer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    applying?.let { ApplyThemeDialog(it) { applying = null } }
+}
+
+@Composable
+private fun SectionTile(section: Section, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .height(128.dp)
+            .shadow(6.dp, RoundedCornerShape(28.dp), ambientColor = section.color, spotColor = section.color)
+            .clip(RoundedCornerShape(28.dp))
+            .background(section.brush)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+    ) {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.24f)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(section.icon, contentDescription = null, tint = Color.White) }
+        Column(Modifier.align(Alignment.BottomStart)) {
+            Text(section.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+            Text(
+                section.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.88f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** A round thumbnail of a preset's wallpaper with one of your icons in its style. */
+@Composable
+private fun LookBubble(preset: ThemeConfig, apps: List<AppEntry>, selected: Boolean, onClick: () -> Unit) {
+    val sample = remember(apps) { apps.firstOrNull() }
+    Column(
+        Modifier
+            .width(72.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .then(if (selected) Modifier.background(MaterialTheme.colorScheme.primary) else Modifier)
+                .padding(if (selected) 3.dp else 0.dp)
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            WallpaperPreview(preset.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
+            CompositionLocalProvider(LocalLauncherTheme provides preset) {
+                if (sample != null) AppIcon(sample, null, 30.dp)
+            }
+            if (selected) {
+                Icon(
+                    Icons.Filled.AutoAwesome,
+                    contentDescription = "In use",
+                    tint = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(14.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(preset.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

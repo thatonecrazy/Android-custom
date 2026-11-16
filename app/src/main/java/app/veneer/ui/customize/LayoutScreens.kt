@@ -23,7 +23,7 @@ fun HomeLayoutScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> U
     val theme = state.theme
     fun update(transform: (ThemeConfig) -> ThemeConfig) = store.updateTheme(transform)
 
-    SettingsPage("Home screen and dock", onBack, state, apps) {
+    SettingsPage("Home screen", onBack, state, apps, section = Section.HomeLayout) {
         item { SectionHeader("Grid") }
         item {
             SettingCard {
@@ -90,7 +90,7 @@ fun DrawerScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
     val theme = state.theme
     fun update(transform: (ThemeConfig) -> ThemeConfig) = store.updateTheme(transform)
 
-    SettingsPage("App list", onBack, state, apps) {
+    SettingsPage("App list", onBack, state, apps, section = Section.Drawer) {
         item { SectionHeader("Layout") }
         item {
             SettingCard {
