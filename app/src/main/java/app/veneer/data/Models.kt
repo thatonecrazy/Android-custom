@@ -32,6 +32,19 @@ enum class BarIcons(val label: String) {
     Dark("Dark icons"),
 }
 
+/** What a home screen gesture does. */
+@Serializable
+enum class GestureAction(val label: String) {
+    None("Nothing"),
+    AppList("App list"),
+    Search("Search"),
+    Notifications("Notifications"),
+    QuickSettings("Quick settings"),
+    LockScreen("Lock screen"),
+    Customize("Customize"),
+    OpenApp("Open an app"),
+}
+
 @Serializable
 enum class WallpaperStyle(val label: String) {
     Solid("Solid"),
@@ -88,10 +101,15 @@ data class ThemeConfig(
     val pageIndicator: Boolean = true,
     val wallpaperDim: Float = 0f,
 
-    // System bars and gestures
+    // System bars, gestures and notification dots
     val hideStatusBar: Boolean = false,
     val statusBarIcons: BarIcons = BarIcons.Light,
-    val swipeDownNotifications: Boolean = true,
+    val gestureSwipeUp: GestureAction = GestureAction.AppList,
+    val gestureSwipeDown: GestureAction = GestureAction.Notifications,
+    val gestureDoubleTap: GestureAction = GestureAction.None,
+    /** The app each gesture opens when it's set to [GestureAction.OpenApp], keyed by gesture name. */
+    val gestureApps: Map<String, String> = emptyMap(),
+    val notificationDots: Boolean = true,
 
     // App drawer
     val drawerColumns: Int = 4,
@@ -114,6 +132,8 @@ enum class BuiltinKind(val label: String, val defaultSpanX: Int, val defaultSpan
     Text("Text", 4, 1),
     Search("Search bar", 4, 1),
     Battery("Battery", 2, 1),
+    Media("Music", 4, 1),
+    Agenda("Calendar agenda", 4, 2),
 }
 
 @Serializable
@@ -146,7 +166,10 @@ sealed class ItemContent {
     /** A launchable activity. [user] is the profile serial number (work profile apps differ). */
     @Serializable
     @SerialName("app")
-    data class App(val component: String, val user: Long) : ItemContent()
+    data class App(val component: String, val user: Long) : ItemContent() {
+        /** Matches [app.veneer.apps.AppKey.id]. */
+        val id: String get() = "$component#$user"
+    }
 
     /** A widget provided by another app, hosted through AppWidgetHost. */
     @Serializable
@@ -157,6 +180,16 @@ sealed class ItemContent {
     @Serializable
     @SerialName("builtin")
     data class Builtin(val kind: BuiltinKind, val style: WidgetStyle = WidgetStyle()) : ItemContent()
+
+    /** A group of apps behind one icon. Always holds at least two apps. */
+    @Serializable
+    @SerialName("folder")
+    data class Folder(val name: String = "Folder", val apps: List<App> = emptyList(), val color: Int? = null) : ItemContent()
+
+    /** Several widgets in one spot; swipe up and down to switch. Holds [Widget] and [Builtin] items. */
+    @Serializable
+    @SerialName("stack")
+    data class Stack(val widgets: List<ItemContent> = emptyList()) : ItemContent()
 }
 
 @Serializable

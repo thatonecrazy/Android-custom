@@ -6,6 +6,10 @@ A home-screen app for Android that lets you restyle what you see every day: ever
 
 ![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
 
+| Folders | Stacks and music | Search does sums |
+| --- | --- | --- |
+| ![A folder](docs/screenshots/folder.png) | ![Widget stack and music widget](docs/screenshots/widgets.png) | ![Calculator in search](docs/screenshots/drawer-calculator.png) |
+
 | App list | Edit one app | Widgets |
 | --- | --- | --- |
 | ![App list](docs/screenshots/drawer.png) | ![Edit an app](docs/screenshots/edit-app.png) | ![Widget picker](docs/screenshots/widget-picker.png) |
@@ -32,9 +36,15 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 
 **Widgets**
 - Any widget from your other apps: add, move, resize, open its settings.
-- Veneer's own widgets: clock, date, clock with date, greeting, text, search bar and battery. Each one has its own font, size, color, alignment, background and roundness.
+- Veneer's own widgets: clock, date, clock with date, greeting, text, search bar, battery, music (art, title and play controls for whatever's playing) and calendar agenda (your next events in each calendar's color). Each one has its own font, size, color, alignment, background and roundness.
+- Widget stacks: several widgets in one spot. Swipe up and down to switch between them.
 
 **Home screen, dock and app list**
+- Folders: drop one app on another. Name them, color them, ungroup them.
+- App shortcuts: hold an app to jump straight to things like "New message" (from the app's own shortcuts).
+- Notification dots on apps and folders with unread notifications.
+- Gestures: pick what swipe up, swipe down and double-tap do: app list, search, notifications, quick settings, lock screen, Customize, or open any app.
+- Search that also does sums: type `12*3+4` and get the answer.
 - Grid from 3×3 to 8×10, any number of pages, page dots.
 - Dock with 3 to 7 apps, any color or opacity, any roundness, or no dock.
 - Darken the wallpaper, hide the status bar or pick light or dark status bar icons.
@@ -69,15 +79,26 @@ To switch back, go to Settings → Apps → Default apps → Home app.
 
 | Do this | To get |
 | --- | --- |
-| Swipe up | The app list (with search) |
-| Swipe down | Notifications |
+| Swipe up | The app list (with search), or whatever you pick |
+| Swipe down | Notifications, or whatever you pick |
+| Double-tap an empty spot | Nothing until you pick something, like locking the screen |
 | Hold an empty spot | Widgets, wallpaper, Customize, add or remove pages |
-| Hold an app or widget | Its menu; keep holding and drag to move it, or drop it on the dock |
+| Hold an app or widget | Its menu and shortcuts; keep holding and drag to move it, or drop it on the dock |
+| Drop an app on another app | A folder (drop more apps on it to add them) |
+| Hold a widget, then "Stack another widget here" | A widget stack you swipe through |
 | Hold near the screen edge while dragging | Move to the next page |
 | Hold an app in the app list | Add to home, change icon or name, hide, uninstall |
 | Tap the clock, date or battery widget | Alarms, calendar, battery settings |
 
 **Veneer** in the app list opens all the customization screens.
+
+### Optional permissions
+
+Veneer asks for these only when you turn on the feature that needs them:
+
+- **Notification access** for notification dots and the music widget (Android shares media sessions only with apps that have it).
+- **Calendar** for the calendar agenda widget.
+- **Accessibility service** ("Veneer screen lock") only if you pick "Lock screen" for a gesture. Android reserves screen locking for accessibility services; this one reads nothing on screen.
 
 ## Building
 

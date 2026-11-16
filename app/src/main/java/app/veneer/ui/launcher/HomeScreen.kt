@@ -69,6 +69,7 @@ import app.veneer.apps.AppEntry
 import app.veneer.apps.AppKey
 import app.veneer.data.BuiltinKind
 import app.veneer.data.DOCK_PAGE
+import app.veneer.data.GestureAction
 import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
@@ -116,7 +117,7 @@ private fun CellGrid(columns: Int, rows: Int, modifier: Modifier = Modifier, con
     }
 }
 
-fun appId(content: ItemContent.App) = "${content.component}#${content.user}"
+fun appId(content: ItemContent.App) = content.id
 
 @Composable
 fun HomeScreen(
@@ -189,15 +190,15 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .pointerInput(theme.swipeDownNotifications) {
+            .pointerInput(theme.gestureSwipeUp, theme.gestureSwipeDown) {
                 var total = 0f
                 detectVerticalDragGestures(
                     onDragStart = { total = 0f },
                     onDragEnd = {
                         val threshold = 56.dp.toPx()
                         when {
-                            total < -threshold -> controller.openDrawer()
-                            total > threshold && theme.swipeDownNotifications -> SystemActions.expandNotifications(context)
+                            total < -threshold -> controller.perform(theme.gestureSwipeUp, "swipeUp", context, actions)
+                            total > threshold -> controller.perform(theme.gestureSwipeDown, "swipeDown", context, actions)
                         }
                     },
                 ) { change, dy ->
@@ -232,11 +233,17 @@ fun HomeScreen(
                     Box(
                         Modifier
                             .matchParentSize()
-                            .pointerInput(Unit) {
-                                detectTapGestures(onLongPress = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    controller.homeMenuOpen = true
-                                })
+                            .pointerInput(theme.gestureDoubleTap) {
+                                val doubleTap = theme.gestureDoubleTap
+                                detectTapGestures(
+                                    onDoubleTap = if (doubleTap == GestureAction.None) null else {
+                                        { controller.perform(doubleTap, "doubleTap", context, actions) }
+                                    },
+                                    onLongPress = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        controller.homeMenuOpen = true
+                                    },
+                                )
                             },
                     )
                     CellGrid(theme.gridColumns, theme.gridRows, Modifier.fillMaxSize().padding(GridPadding)) {
@@ -272,7 +279,7 @@ private fun DropHighlight(controller: HomeController, state: LauncherState, page
     val d = controller.drag?.takeIf { it.started } ?: return
     val spot = controller.dropSpot(d, state) ?: return
     if (spot.page != page) return
-    val valid = LayoutOps.move(state, d.item.id, spot) != null
+    val valid = LayoutOps.drop(state, d.item.id, spot) != null
     Box(
         Modifier
             .layoutId(Cell(spot.x, spot.y, d.item.spanX, d.item.spanY))
@@ -355,133 +362,6 @@ private fun Dock(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun HomeItemView(
-    item: HomeItem,
-    controller: HomeController,
-    actions: LauncherActions,
-    state: LauncherState,
-    appMap: Map<String, AppEntry>,
-    iconSize: Dp,
-    showLabel: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    when (val content = item.content) {
-        is ItemContent.App -> {
-            val id = appId(content)
-            val entry = appMap[id]
-            val override = state.overrides[id]
-            val label = override?.label ?: entry?.label ?: ""
-            ItemFrame(item, controller, modifier, onClick = { entry?.let { actions.launch(it.key) } }) { pressed ->
-                AppTile(entry, label, override?.icon, iconSize, showLabel, Color(state.theme.labelColor), pressed = pressed)
-                ItemMenu(item, controller, actions, entry)
-            }
-        }
-        is ItemContent.Widget -> ItemFrame(item, controller, modifier, onClick = null) {
-            HostedWidget(content.appWidgetId, actions.widgetHost)
-            ItemMenu(item, controller, actions, null)
-        }
-        is ItemContent.Builtin -> {
-            val onClick: (() -> Unit)? = when (content.kind) {
-                BuiltinKind.Clock, BuiltinKind.ClockDate -> { { SystemActions.openAlarms(context) } }
-                BuiltinKind.Date -> { { SystemActions.openCalendar(context) } }
-                BuiltinKind.Battery -> { { SystemActions.openBatterySettings(context) } }
-                BuiltinKind.Search -> { { controller.openDrawer(focusSearch = true) } }
-                BuiltinKind.Greeting, BuiltinKind.Text -> null
-            }
-            ItemFrame(item, controller, modifier, onClick = onClick) {
-                BuiltinWidgetView(content.kind, content.style)
-                ItemMenu(item, controller, actions, null)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ItemMenu(item: HomeItem, controller: HomeController, actions: LauncherActions, entry: AppEntry?) {
-    val expanded = controller.menuItemId == item.id && controller.drag?.started != true
-    fun close() {
-        controller.menuItemId = null
-    }
-    FriendlyMenu(expanded = expanded, onDismissRequest = ::close) {
-        when (val content = item.content) {
-            is ItemContent.App -> {
-                if (entry != null) {
-                    MenuRow("Edit icon and name", Icons.Filled.Edit, Vivid.Violet) { close(); controller.editingApp = entry.key }
-                    MenuRow("App info", Icons.Filled.Info, Vivid.Blue) { close(); controller.app.apps.openAppInfo(entry.key) }
-                }
-                MenuRow("Remove from home", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
-                if (entry != null) {
-                    MenuRow("Uninstall", Icons.Filled.Delete, Vivid.Coral) { close(); controller.app.apps.uninstall(entry.key) }
-                }
-            }
-            is ItemContent.Builtin -> {
-                MenuRow("Style", Icons.Filled.Palette, Vivid.Pink) { close(); controller.editingStyleItemId = item.id }
-                if (item.page != DOCK_PAGE) {
-                    MenuRow("Resize", Icons.Filled.OpenInFull, Vivid.Teal) { close(); controller.resizingItemId = item.id }
-                }
-                MenuRow("Remove", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
-            }
-            is ItemContent.Widget -> {
-                if (item.page != DOCK_PAGE) {
-                    MenuRow("Resize", Icons.Filled.OpenInFull, Vivid.Teal) { close(); controller.resizingItemId = item.id }
-                }
-                val info = actions.widgetHost.info(content.appWidgetId)
-                if (info != null && actions.widgetHost.isReconfigurable(info)) {
-                    MenuRow("Settings", Icons.Filled.Settings, Vivid.Blue) { close(); actions.reconfigureWidget(content.appWidgetId) }
-                }
-                MenuRow("Remove", Icons.Filled.RemoveCircleOutline, Vivid.Orange) { close(); controller.removeItem(item.id, actions::deleteWidget) }
-            }
-        }
-    }
-}
-
-/** The copy of an item that follows the finger while it is dragged. */
-@Composable
-fun DragGhost(controller: HomeController, state: LauncherState, appMap: Map<String, AppEntry>) {
-    val d = controller.drag?.takeIf { it.started } ?: return
-    val density = LocalDensity.current
-    val topLeft = d.pointer - d.grabOffset
-    val width = with(density) { d.itemSize.width.toDp() }
-    val height = with(density) { d.itemSize.height.toDp() }
-    val theme = state.theme
-    Box(
-        Modifier
-            .offset { IntOffset(topLeft.x.roundToInt(), topLeft.y.roundToInt()) }
-            .size(width, height)
-            .graphicsLayer {
-                scaleX = 1.08f
-                scaleY = 1.08f
-                alpha = 0.92f
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        when (val content = d.item.content) {
-            is ItemContent.App -> {
-                val id = appId(content)
-                val override = state.overrides[id]
-                val entry = appMap[id]
-                val iconSize = min(theme.iconSizeDp.toFloat(), with(density) { (min(d.itemSize.width, d.itemSize.height) * 0.8f).toDp().value }).dp
-                AppTile(
-                    entry, override?.label ?: entry?.label ?: "", override?.icon, iconSize,
-                    showLabel = d.item.page != DOCK_PAGE && theme.showHomeLabels,
-                    labelColor = Color(theme.labelColor),
-                )
-            }
-            is ItemContent.Builtin -> BuiltinWidgetView(content.kind, content.style)
-            is ItemContent.Widget -> Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White.copy(alpha = 0.16f))
-                    .border(1.5.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(18.dp)),
-            )
         }
     }
 }

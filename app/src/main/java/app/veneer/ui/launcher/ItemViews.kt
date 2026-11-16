@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -69,6 +71,26 @@ import app.veneer.ui.theme.LocalLauncherTheme
 import app.veneer.ui.theme.LocalThemeFont
 import app.veneer.veneer
 import app.veneer.widgets.WidgetHost
+
+/** Notification counts keyed by "package#userSerial", for the dots on icons. Empty outside the home screen. */
+val LocalNotificationCounts = compositionLocalOf<Map<String, Int>> { emptyMap() }
+
+/** The small dot at the top corner of an icon that has notifications. */
+@Composable
+fun NotificationDot(iconSize: Dp, modifier: Modifier = Modifier) {
+    val theme = LocalLauncherTheme.current
+    val size = (iconSize * 0.26f).coerceIn(9.dp, 16.dp)
+    Box(
+        modifier
+            .offset(x = size * 0.15f, y = -size * 0.15f)
+            .size(size)
+            .clip(CircleShape)
+            .background(Color.White)
+            .padding(1.5.dp)
+            .clip(CircleShape)
+            .background(Color(theme.accent)),
+    )
+}
 
 /** An app icon rendered with the current theme. Shows nothing until the icon is ready. */
 @Composable
@@ -130,12 +152,18 @@ fun AppTile(
     pressed: Boolean = false,
 ) {
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, label = "press")
+    val theme = LocalLauncherTheme.current
+    val counts = LocalNotificationCounts.current
+    val hasDot = theme.notificationDots && entry != null && (counts["${entry.packageName}#${entry.key.userSerial}"] ?: 0) > 0
     Column(
         modifier.graphicsLayer { scaleX = scale; scaleY = scale },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        AppIcon(entry, override, iconSize)
+        Box {
+            AppIcon(entry, override, iconSize)
+            if (hasDot) NotificationDot(iconSize, Modifier.align(Alignment.TopEnd))
+        }
         if (showLabel) {
             Spacer(Modifier.height(4.dp))
             IconLabel(label, labelColor, Modifier.padding(horizontal = 2.dp))

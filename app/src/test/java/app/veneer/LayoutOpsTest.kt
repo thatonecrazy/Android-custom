@@ -67,14 +67,66 @@ class LayoutOpsTest {
     }
 
     @Test
-    fun singleCellItemsSwap() {
+    fun appDroppedOnAppMakesAFolder() {
         var s = LayoutOps.add(empty, app(0))
         s = LayoutOps.add(s, app(1))
         val (a, b) = s.items
-        s = LayoutOps.move(s, a.id, Spot(0, b.x, b.y))!!
-        assertEquals(b.x, s.items.first { it.id == a.id }.x)
-        assertEquals(a.x, s.items.first { it.id == b.id }.x)
+        s = LayoutOps.drop(s, b.id, Spot(0, a.x, a.y))!!
+        val folder = s.items.single().content as ItemContent.Folder
+        assertEquals(listOf(app(0), app(1)), folder.apps)
+        assertEquals(a.x to a.y, s.items.single().x to s.items.single().y)
+    }
+
+    @Test
+    fun appDroppedOnFolderJoinsIt() {
+        var s = LayoutOps.addAt(empty, ItemContent.Folder("Games", listOf(app(0), app(1))), Spot(0, 0, 0), 1, 1)
+        s = LayoutOps.add(s, app(2))
+        s = LayoutOps.drop(s, s.items.last().id, Spot(0, 0, 0))!!
+        assertEquals(3, (s.items.single().content as ItemContent.Folder).apps.size)
+    }
+
+    @Test
+    fun folderDroppedOnAppSwaps() {
+        var s = LayoutOps.addAt(empty, ItemContent.Folder("F", listOf(app(0), app(1))), Spot(0, 0, 0), 1, 1)
+        s = LayoutOps.addAt(s, app(2), Spot(0, 1, 0), 1, 1)
+        val folderId = s.items.first().id
+        s = LayoutOps.drop(s, folderId, Spot(0, 1, 0))!!
+        assertEquals(1, s.items.first { it.id == folderId }.x)
+        assertEquals(0, s.items.first { it.content == app(2) }.x)
+    }
+
+    @Test
+    fun folderWithOneAppLeftTurnsBackIntoThatApp() {
+        var s = LayoutOps.addAt(empty, ItemContent.Folder("F", listOf(app(0), app(1))), Spot(0, 2, 2), 1, 1)
+        val id = s.items.single().id
+        s = LayoutOps.removeFromFolder(s, id, app(1).id, toHome = true)
+        assertEquals(2, s.items.size)
+        assertEquals(app(0), s.items.first { it.id == id }.content)
+        assertTrue(s.items.any { it.content == app(1) })
         noOverlaps(s)
+    }
+
+    @Test
+    fun uninstalledAppsLeaveFoldersToo() {
+        var s = LayoutOps.addAt(empty, ItemContent.Folder("F", listOf(app(0), app(1), app(2))), Spot(0, 0, 0), 1, 1)
+        s = LayoutOps.addAt(s, app(3), Spot(0, 1, 0), 1, 1)
+        s = LayoutOps.removeApps(s, setOf(app(1).id, app(2).id, app(3).id))
+        assertEquals(app(0), s.items.single().content)
+    }
+
+    @Test
+    fun widgetsStackAndUnstack() {
+        val battery = ItemContent.Builtin(BuiltinKind.Battery)
+        var s = LayoutOps.addAt(empty, clock, Spot(0, 0, 0), 4, 2)
+        val id = s.items.single().id
+        s = LayoutOps.addToStack(s, id, battery)!!
+        s = LayoutOps.addToStack(s, id, ItemContent.Widget(42, "pkg/.Provider"))!!
+        assertEquals(3, (s.items.single().content as ItemContent.Stack).widgets.size)
+        assertNull(LayoutOps.addToStack(s, id, app(0)))
+        val (afterOne, removed) = LayoutOps.removeFromStack(s, id, 2)
+        assertEquals(ItemContent.Widget(42, "pkg/.Provider"), removed)
+        val (afterTwo, _) = LayoutOps.removeFromStack(afterOne, id, 0)
+        assertEquals(battery, afterTwo.items.single().content)
     }
 
     @Test

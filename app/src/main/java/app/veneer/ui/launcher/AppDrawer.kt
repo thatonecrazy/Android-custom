@@ -67,6 +67,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
@@ -77,6 +78,7 @@ import app.veneer.apps.normalizeForSearch
 import app.veneer.data.LauncherState
 import app.veneer.system.SystemActions
 import app.veneer.ui.theme.Vivid
+import app.veneer.util.Calculator
 import app.veneer.ui.theme.LocalThemeFont
 import app.veneer.veneer
 import java.text.Collator
@@ -243,6 +245,10 @@ fun AppDrawer(
                 .weight(1f)
                 .nestedScroll(closeOnPull),
         ) {
+            val math = if (Calculator.looksLikeMath(query)) Calculator.evaluate(query) else null
+            if (math != null) {
+                item(span = { GridItemSpan(maxLineSpan) }) { CalculatorResult(query, math, fg, Color(theme.accent)) }
+            }
             items(visible, key = { it.first.key.id }) { (entry, label) ->
                 DrawerCell(entry, label, controller, actions, state, fg, hidden = overrides[entry.key.id]?.hidden == true)
             }
@@ -308,6 +314,10 @@ private fun DrawerCell(
             showLabel = theme.showDrawerLabels, labelColor = if (hidden) fg.copy(alpha = 0.5f) else fg, pressed = pressed,
         )
         FriendlyMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            ShortcutMenuRows(entry.key, controller) {
+                menu = false
+                controller.closeDrawer()
+            }
             MenuRow("Add to home screen", Icons.Filled.AddCircle, Vivid.Green) {
                 menu = false
                 controller.addToHome(entry)
@@ -330,5 +340,28 @@ private fun DrawerCell(
                 controller.app.apps.uninstall(entry.key)
             }
         }
+    }
+}
+
+/** The answer to a sum typed into search. Tap to copy it. */
+@Composable
+private fun CalculatorResult(query: String, value: Double, fg: Color, accent: Color) {
+    val clipboard = LocalContext.current.getSystemService(android.content.ClipboardManager::class.java)
+    val text = Calculator.format(value)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(accent.copy(alpha = 0.18f))
+            .clickable { clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Result", text)) }
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(query.trim(), color = fg.copy(alpha = 0.7f), style = TextStyle(fontSize = 14.sp, fontFamily = LocalThemeFont.current))
+            Text("= $text", color = fg, style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = LocalThemeFont.current))
+        }
+        Text("Tap to copy", color = accent, style = TextStyle(fontSize = 12.sp))
     }
 }

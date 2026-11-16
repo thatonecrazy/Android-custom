@@ -78,7 +78,12 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
     val host = actions.widgetHost
     val theme = controller.store.current.theme
     var query by remember { mutableStateOf("") }
-    BackHandler { controller.widgetPickerOpen = false }
+    fun close() {
+        controller.widgetPickerOpen = false
+        controller.stackTargetId = null
+    }
+    val stacking = controller.stackTargetId != null
+    BackHandler { close() }
     val groups by produceState<List<WidgetGroup>?>(null) { value = host.groups() }
     val cellW = controller.gridBounds.width / theme.gridColumns
     val cellH = controller.gridBounds.height / theme.gridRows
@@ -86,10 +91,10 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.windowInsetsPadding(WindowInsets.systemBars)) {
             Row(Modifier.padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { controller.widgetPickerOpen = false }) {
+                IconButton(onClick = { close() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Text("Widgets", style = MaterialTheme.typography.titleLarge)
+                Text(if (stacking) "Add to stack" else "Widgets", style = MaterialTheme.typography.titleLarge)
             }
             OutlinedTextField(
                 value = query,
@@ -112,7 +117,7 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
                         items(BuiltinKind.entries.filter { it.label.contains(query, ignoreCase = true) || query.isBlank() }) { kind ->
                             BuiltinCard(kind, theme) {
                                 controller.addBuiltin(kind)
-                                controller.widgetPickerOpen = false
+                                close()
                             }
                         }
                     }
@@ -146,8 +151,8 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
                                 items(group.widgets, key = { it.provider.flattenToString() }) { info ->
                                     val (sx, sy) = widgetSpan(info, cellW, cellH, theme.gridColumns, theme.gridRows)
                                     SystemWidgetCard(info, host.label(info), "$sx × $sy", actions) {
-                                        controller.widgetPickerOpen = false
                                         actions.addSystemWidget(info)
+                                        close()
                                     }
                                 }
                             }

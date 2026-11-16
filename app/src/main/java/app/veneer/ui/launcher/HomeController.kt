@@ -1,9 +1,12 @@
 package app.veneer.ui.launcher
 
+import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import android.provider.MediaStore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
@@ -14,12 +17,15 @@ import app.veneer.apps.AppEntry
 import app.veneer.apps.AppKey
 import app.veneer.data.BuiltinKind
 import app.veneer.data.DOCK_PAGE
+import app.veneer.data.GestureAction
 import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
 import app.veneer.data.LayoutOps
 import app.veneer.data.WidgetAlign
 import app.veneer.data.WidgetStyle
+import app.veneer.system.LockService
+import app.veneer.system.SystemActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -35,6 +41,9 @@ data class DragState(
     val started: Boolean,
 )
 
+/** Which widget a style sheet edits: a home item, or one widget inside a stack. */
+data class StyleTarget(val itemId: Long, val stackIndex: Int? = null)
+
 /** UI state for the home screen that isn't saved: open overlays, menus and the item being dragged. */
 class HomeController(val app: VeneerApp, private val touchSlop: Float) {
 
@@ -48,8 +57,15 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
     var homeMenuOpen by mutableStateOf(false)
     var menuItemId by mutableStateOf<Long?>(null)
     var editingApp by mutableStateOf<AppKey?>(null)
-    var editingStyleItemId by mutableStateOf<Long?>(null)
+    var editingStyle by mutableStateOf<StyleTarget?>(null)
     var resizingItemId by mutableStateOf<Long?>(null)
+    var openFolderId by mutableStateOf<Long?>(null)
+
+    /** When set, the widget picker adds to this stack instead of the home screen. */
+    var stackTargetId by mutableStateOf<Long?>(null)
+
+    /** The widget showing in each stack, by item id. */
+    val stackPages = mutableStateMapOf<Long, Int>()
 
     var drag by mutableStateOf<DragState?>(null)
         private set
@@ -63,7 +79,7 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
 
     val anyOverlayOpen: Boolean
         get() = drawerOpen || widgetPickerOpen || homeMenuOpen || menuItemId != null || editingApp != null ||
-            editingStyleItemId != null || resizingItemId != null
+            editingStyle != null || resizingItemId != null || openFolderId != null
 
     fun openDrawer(focusSearch: Boolean = false) {
         drawerFocusSearch = focusSearch
@@ -81,8 +97,10 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
         homeMenuOpen = false
         menuItemId = null
         editingApp = null
-        editingStyleItemId = null
+        editingStyle = null
         resizingItemId = null
+        openFolderId = null
+        stackTargetId = null
         drag = null
     }
 
@@ -117,7 +135,7 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
         drag = null
         if (!d.started) return
         val spot = dropSpot(d, store.current) ?: return
-        store.update { LayoutOps.move(it, d.item.id, spot) ?: it }
+        store.update { LayoutOps.drop(it, d.item.id, spot) ?: it }
     }
 
     fun cancelDrag() {
@@ -158,18 +176,70 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
     }
 
     fun addBuiltin(kind: BuiltinKind) {
-        val style = defaultStyle(kind)
-        store.update { LayoutOps.add(it, ItemContent.Builtin(kind, style), kind.defaultSpanX, kind.defaultSpanY, currentPage) }
+        val content = ItemContent.Builtin(kind, defaultStyle(kind))
+        val stack = stackTargetId
+        stackTargetId = null
+        if (stack != null) {
+            store.update { LayoutOps.addToStack(it, stack, content) ?: it }
+            stackPages[stack] = Int.MAX_VALUE // jump to the new widget
+        } else {
+            store.update { LayoutOps.add(it, content, kind.defaultSpanX, kind.defaultSpanY, currentPage) }
+        }
     }
 
-    fun addSystemWidget(appWidgetId: Int, provider: String, spanX: Int, spanY: Int) {
-        store.update { LayoutOps.add(it, ItemContent.Widget(appWidgetId, provider), spanX, spanY, currentPage) }
+    /** Places a hosted widget on the home screen, or into [stack] when one was picked. */
+    fun addSystemWidget(appWidgetId: Int, provider: String, spanX: Int, spanY: Int, stack: Long?) {
+        val content = ItemContent.Widget(appWidgetId, provider)
+        if (stack != null && store.current.items.any { it.id == stack }) {
+            store.update { LayoutOps.addToStack(it, stack, content) ?: it }
+            stackPages[stack] = Int.MAX_VALUE
+        } else {
+            store.update { LayoutOps.add(it, content, spanX, spanY, currentPage) }
+        }
     }
 
     fun removeItem(id: Long, onWidgetRemoved: (Int) -> Unit) {
         val item = store.current.items.firstOrNull { it.id == id } ?: return
-        (item.content as? ItemContent.Widget)?.let { onWidgetRemoved(it.appWidgetId) }
+        widgetIds(item.content).forEach(onWidgetRemoved)
         store.update { LayoutOps.remove(it, id) }
+    }
+
+    fun removeFromStack(itemId: Long, index: Int, onWidgetRemoved: (Int) -> Unit) {
+        var removed: ItemContent? = null
+        store.update { s -> LayoutOps.removeFromStack(s, itemId, index).also { removed = it.second }.first }
+        removed?.let { widgetIds(it).forEach(onWidgetRemoved) }
+        stackPages[itemId] = (index - 1).coerceAtLeast(0)
+    }
+
+    /** Splits a folder back into separate apps on the home screen. */
+    fun ungroupFolder(itemId: Long) {
+        store.update { s ->
+            val folder = s.items.firstOrNull { it.id == itemId }?.content as? ItemContent.Folder ?: return@update s
+            var next = s
+            folder.apps.drop(1).forEach { app -> next = LayoutOps.removeFromFolder(next, itemId, app.id, toHome = true, page = currentPage) }
+            next
+        }
+    }
+
+    /** Runs whatever the user picked for a home screen gesture. */
+    fun perform(action: GestureAction, gesture: String, context: Context, actions: LauncherActions) {
+        when (action) {
+            GestureAction.None -> Unit
+            GestureAction.AppList -> openDrawer()
+            GestureAction.Search -> openDrawer(focusSearch = true)
+            GestureAction.Notifications -> SystemActions.expandNotifications(context)
+            GestureAction.QuickSettings -> SystemActions.expandQuickSettings(context)
+            GestureAction.Customize -> actions.openCustomize()
+            GestureAction.LockScreen -> if (!LockService.lock()) {
+                Toast.makeText(context, "Turn on \"Veneer screen lock\" to lock with a gesture", Toast.LENGTH_LONG).show()
+                LockService.openSettings(context)
+            }
+            GestureAction.OpenApp -> {
+                val id = store.current.theme.gestureApps[gesture]
+                val key = id?.let { AppKey.parse(it) }
+                if (key != null) actions.launch(key) else actions.openCustomize("home")
+            }
+        }
     }
 
     fun addPage() {
@@ -241,6 +311,15 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
             BuiltinKind.Text -> WidgetStyle(sizeSp = 22, text = "Make it yours.")
             BuiltinKind.Search -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false)
             BuiltinKind.Battery -> WidgetStyle(sizeSp = 28)
+            BuiltinKind.Media -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false, align = WidgetAlign.Start)
+            BuiltinKind.Agenda -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false, align = WidgetAlign.Start)
+        }
+
+        /** Every hosted widget id inside an item, so they can be released when it goes away. */
+        fun widgetIds(content: ItemContent): List<Int> = when (content) {
+            is ItemContent.Widget -> listOf(content.appWidgetId)
+            is ItemContent.Stack -> content.widgets.flatMap(::widgetIds)
+            else -> emptyList()
         }
     }
 }

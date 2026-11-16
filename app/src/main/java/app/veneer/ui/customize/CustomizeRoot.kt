@@ -118,7 +118,11 @@ fun ThemeConfig.withLookOf(other: ThemeConfig) = other.copy(
     dockColumns = dockColumns,
     drawerColumns = drawerColumns,
     pageIndicator = pageIndicator,
-    swipeDownNotifications = swipeDownNotifications,
+    gestureSwipeUp = gestureSwipeUp,
+    gestureSwipeDown = gestureSwipeDown,
+    gestureDoubleTap = gestureDoubleTap,
+    gestureApps = gestureApps,
+    notificationDots = notificationDots,
 )
 
 @Composable

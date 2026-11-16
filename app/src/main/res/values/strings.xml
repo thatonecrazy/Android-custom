@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Veneer</string>
+    <string name="lock_service_label">Veneer screen lock</string>
+    <string name="lock_service_summary">Lets a home screen gesture lock your phone</string>
+    <string name="lock_service_description">Turn this on so a gesture you pick in Veneer (like double-tap) can lock your screen. Veneer doesn\'t read, collect or change anything on your screen; locking is the only thing this does.</string>
+    <string name="dots_service_label">Veneer notification dots</string>
 </resources>

@@ -195,6 +195,53 @@ class ScreensTest {
     }
 
     @Test
+    fun droppingAnAppOnAnotherMakesAFolder() {
+        launchHome().use {
+            compose.onNodeWithText("Notes").performTouchInput {
+                down(center)
+                advanceEventTime(800)
+                moveBy(Offset(-width * 0.5f, 0f), delayMillis = 32)
+                moveBy(Offset(-width * 0.5f, 0f), delayMillis = 32)
+                up()
+            }
+            compose.waitForIdle()
+            val folder = app.store.current.items.firstNotNullOf { it.content as? ItemContent.Folder }
+            assertEquals(listOf(appContent("Weather"), appContent("Notes")), folder.apps)
+            compose.onNodeWithText("Folder").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Hold an app for more. Drop apps on this folder to add them.").assertExists()
+            shot("folder", Presets.all.first().wallpaper)
+        }
+    }
+
+    @Test
+    fun stacksAndLiveWidgetsRender() {
+        app.store.update { s ->
+            val clockId = s.items.first { (it.content as? ItemContent.Builtin)?.kind == BuiltinKind.ClockDate }.id
+            var next = LayoutOps.addToStack(s, clockId, ItemContent.Builtin(BuiltinKind.Battery, HomeController.defaultStyle(BuiltinKind.Battery)))!!
+            next = LayoutOps.addAt(next, ItemContent.Builtin(BuiltinKind.Media, HomeController.defaultStyle(BuiltinKind.Media)), Spot(0, 0, 2), 4, 1)
+            next = LayoutOps.addAt(next, ItemContent.Builtin(BuiltinKind.Agenda, HomeController.defaultStyle(BuiltinKind.Agenda)), Spot(1, 0, 0), 4, 2)
+            next
+        }
+        launchHome().use {
+            compose.onNodeWithText("Tap to show what's playing").assertExists()
+            shot("widgets", Presets.all.first().wallpaper)
+        }
+    }
+
+    @Test
+    fun searchDoesSums() {
+        launchHome().use {
+            compose.onAllNodes(isRoot()).onFirst().performTouchInput { swipeUp(startY = bottom * 0.6f, endY = bottom * 0.2f) }
+            compose.waitForIdle()
+            compose.onNode(hasSetTextAction()).performTextInput("12*3+4")
+            compose.waitForIdle()
+            compose.onNodeWithText("= 40").assertExists()
+            shot("drawer-calculator", Presets.all.first().wallpaper)
+        }
+    }
+
+    @Test
     fun holdAndDragMovesAnApp() {
         launchHome().use {
             val maps = appContent("Maps")

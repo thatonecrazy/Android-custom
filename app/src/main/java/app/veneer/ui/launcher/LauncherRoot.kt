@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -27,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.veneer.apps.AppKey
 import app.veneer.data.BarIcons
 import app.veneer.data.ItemContent
+import app.veneer.data.LayoutOps
+import app.veneer.system.NotificationDotsService
 import app.veneer.ui.common.EditAppScreen
 import app.veneer.ui.theme.LauncherTheme
 
@@ -46,18 +49,25 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
         if (loaded && !state.firstRunDone) controller.setupDefaultLayout()
     }
 
-    // Drop shortcuts to apps that were uninstalled.
+    // Drop shortcuts to apps that were uninstalled, on the home screen and inside folders.
     LaunchedEffect(appMap, loaded) {
         if (!loaded || appMap.isEmpty()) return@LaunchedEffect
-        val gone = app.store.current.items.filter { item ->
-            val content = item.content as? ItemContent.App ?: return@filter false
-            val id = appId(content)
+        val placed = app.store.current.items.flatMap { item ->
+            when (val c = item.content) {
+                is ItemContent.App -> listOf(c.id)
+                is ItemContent.Folder -> c.apps.map { it.id }
+                else -> emptyList()
+            }
+        }
+        val gone = placed.filter { id ->
             if (appMap.containsKey(id)) return@filter false
             val key = AppKey.parse(id) ?: return@filter true
             app.apps.userSerialIsMain(key.userSerial) && !app.apps.isInstalled(key)
-        }.map { it.id }.toSet()
-        if (gone.isNotEmpty()) app.store.update { s -> s.copy(items = s.items.filterNot { it.id in gone }) }
+        }.toSet()
+        if (gone.isNotEmpty()) app.store.update { LayoutOps.removeApps(it, gone) }
     }
+
+    val notificationCounts by NotificationDotsService.counts.collectAsStateWithLifecycle()
 
     // Status bar: hidden or shown, with light or dark icons. The drawer picks icons that suit its background.
     val view = LocalView.current
@@ -79,6 +89,7 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
     BackHandler { controller.closeAll() }
 
     LauncherTheme(theme, font) {
+      CompositionLocalProvider(LocalNotificationCounts provides notificationCounts) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -99,9 +110,10 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
             ) {
                 AppDrawer(controller, actions, state, apps)
             }
+            FolderPopup(controller, actions, state, appMap)
             if (controller.widgetPickerOpen) WidgetPicker(controller, actions)
             if (controller.homeMenuOpen) HomeMenuSheet(controller, actions)
-            controller.editingStyleItemId?.let { WidgetStyleSheet(controller, it) }
+            controller.editingStyle?.let { WidgetStyleSheet(controller, it) }
             controller.resizingItemId?.let { ResizeDialog(controller, it) }
             controller.editingApp?.let { key ->
                 val entry = appMap[key.id]
@@ -112,5 +124,6 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
                 }
             }
         }
+      }
     }
 }

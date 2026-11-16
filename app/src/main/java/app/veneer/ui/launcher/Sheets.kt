@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.veneer.data.BuiltinKind
+import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.data.WidgetAlign
@@ -103,6 +104,7 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
         Column(Modifier.padding(bottom = 24.dp)) {
             SheetRow(Icons.Filled.Widgets, Vivid.Teal, "Widgets", "Clocks, search and widgets from your apps") {
                 controller.homeMenuOpen = false
+                controller.stackTargetId = null
                 controller.widgetPickerOpen = true
             }
             SheetRow(Icons.Filled.Wallpaper, Vivid.Purple, "Wallpaper", "Pictures, gradients and system colors") {
@@ -161,21 +163,30 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
 /** Every styling option for one of Veneer's own widgets, with a live preview. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WidgetStyleSheet(controller: HomeController, itemId: Long) {
+fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
     val state by controller.store.state.collectAsState()
+    val itemId = target.itemId
     val item = state.items.firstOrNull { it.id == itemId }
-    val content = item?.content as? ItemContent.Builtin
-    if (content == null) {
-        LaunchedEffect(Unit) { controller.editingStyleItemId = null }
+    fun builtinIn(item: HomeItem?): ItemContent.Builtin? = when (val c = item?.content) {
+        is ItemContent.Builtin -> c
+        is ItemContent.Stack -> target.stackIndex?.let { c.widgets.getOrNull(it) } as? ItemContent.Builtin
+        else -> null
+    }
+    val content = builtinIn(item)
+    if (item == null || content == null) {
+        LaunchedEffect(Unit) { controller.editingStyle = null }
         return
     }
     val style = content.style
     fun update(transform: (WidgetStyle) -> WidgetStyle) = controller.store.update { s ->
-        val current = s.items.firstOrNull { it.id == itemId }?.content as? ItemContent.Builtin ?: return@update s
-        LayoutOps.updateContent(s, itemId, current.copy(style = transform(current.style)))
+        val currentItem = s.items.firstOrNull { it.id == itemId }
+        val current = builtinIn(currentItem) ?: return@update s
+        val restyled = current.copy(style = transform(current.style))
+        if (currentItem?.content is ItemContent.Stack) LayoutOps.updateStackChild(s, itemId, target.stackIndex ?: 0, restyled)
+        else LayoutOps.updateContent(s, itemId, restyled)
     }
     ModalBottomSheet(
-        onDismissRequest = { controller.editingStyleItemId = null },
+        onDismissRequest = { controller.editingStyle = null },
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(Modifier.verticalScroll(rememberScrollState())) {

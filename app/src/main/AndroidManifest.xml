@@ -11,6 +11,8 @@
     <!-- Swipe down on the home screen opens the notification shade. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- The calendar agenda widget; asked for only when that widget is added. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
 
     <application
         android:name=".VeneerApp"
@@ -41,6 +43,31 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Notification dots on icons and the music widget. Turned on by the user in system settings. -->
+        <service
+            android:name=".system.NotificationDotsService"
+            android:exported="true"
+            android:label="@string/dots_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Only used to lock the screen from a gesture. Turned on by the user in accessibility settings. -->
+        <service
+            android:name=".system.LockService"
+            android:exported="true"
+            android:label="@string/lock_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/lock_service" />
+        </service>
 
         <!-- The entry in the app list opens the customization screens. -->
         <activity

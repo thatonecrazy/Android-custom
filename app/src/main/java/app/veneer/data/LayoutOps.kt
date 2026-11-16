@@ -100,6 +100,117 @@ object LayoutOps {
         return null
     }
 
+    /**
+     * Drops a dragged item on a spot. Free spots just move it. An app dropped on another app makes a
+     * folder; an app dropped on a folder joins it. Other single-cell items swap places.
+     */
+    fun drop(state: LauncherState, itemId: Long, spot: Spot): LauncherState? {
+        val item = state.items.firstOrNull { it.id == itemId } ?: return null
+        if (canPlace(state, itemId, spot, item.spanX, item.spanY)) return move(state, itemId, spot)
+        if (item.spanX != 1 || item.spanY != 1) return null
+        val other = state.items.firstOrNull {
+            it.id != itemId && it.page == spot.page && it.x == spot.x && it.y == spot.y && it.spanX == 1 && it.spanY == 1
+        } ?: return null
+        val dragged = item.content
+        val target = other.content
+        return when {
+            dragged is ItemContent.App && target is ItemContent.App -> state.copy(
+                items = state.items.filterNot { it.id == itemId }.map {
+                    if (it.id == other.id) it.copy(content = ItemContent.Folder("Folder", listOf(target, dragged))) else it
+                },
+            )
+            dragged is ItemContent.App && target is ItemContent.Folder -> state.copy(
+                items = state.items.filterNot { it.id == itemId }.map {
+                    if (it.id == other.id && target.apps.none { a -> a.id == dragged.id }) {
+                        it.copy(content = target.copy(apps = target.apps + dragged))
+                    } else it
+                },
+            )
+            else -> move(state, itemId, spot)
+        }
+    }
+
+    // --- Folders ------------------------------------------------------------------------------
+
+    private fun updateFolder(state: LauncherState, itemId: Long, transform: (ItemContent.Folder) -> ItemContent.Folder) =
+        state.copy(items = state.items.map { item ->
+            val folder = item.content as? ItemContent.Folder
+            if (item.id == itemId && folder != null) item.copy(content = transform(folder)) else item
+        })
+
+    fun renameFolder(state: LauncherState, itemId: Long, name: String) = updateFolder(state, itemId) { it.copy(name = name) }
+
+    fun setFolderColor(state: LauncherState, itemId: Long, color: Int?) = updateFolder(state, itemId) { it.copy(color = color) }
+
+    /**
+     * Takes an app out of a folder. With [toHome], the app gets its own spot (starting at [page]).
+     * A folder left with one app turns back into that app; an empty folder disappears.
+     */
+    fun removeFromFolder(state: LauncherState, itemId: Long, appId: String, toHome: Boolean, page: Int = 0): LauncherState {
+        val item = state.items.firstOrNull { it.id == itemId } ?: return state
+        val folder = item.content as? ItemContent.Folder ?: return state
+        val app = folder.apps.firstOrNull { it.id == appId } ?: return state
+        var next = normalizeFolder(updateFolder(state, itemId) { f -> f.copy(apps = f.apps.filterNot { it.id == appId }) }, itemId)
+        if (toHome) next = add(next, app, preferredPage = page)
+        return next
+    }
+
+    private fun normalizeFolder(state: LauncherState, itemId: Long): LauncherState {
+        val item = state.items.firstOrNull { it.id == itemId } ?: return state
+        val folder = item.content as? ItemContent.Folder ?: return state
+        return when (folder.apps.size) {
+            0 -> remove(state, itemId)
+            1 -> updateContent(state, itemId, folder.apps.single())
+            else -> state
+        }
+    }
+
+    /** Removes apps everywhere they appear: as home items and inside folders. */
+    fun removeApps(state: LauncherState, appIds: Set<String>): LauncherState {
+        if (appIds.isEmpty()) return state
+        var next = state.copy(items = state.items.filterNot { (it.content as? ItemContent.App)?.id in appIds })
+        next.items.filter { it.content is ItemContent.Folder }.forEach { item ->
+            next = normalizeFolder(updateFolder(next, item.id) { f -> f.copy(apps = f.apps.filterNot { it.id in appIds }) }, item.id)
+        }
+        return next
+    }
+
+    // --- Widget stacks ------------------------------------------------------------------------
+
+    /** Adds a widget to a stack, turning a single widget into a stack first. */
+    fun addToStack(state: LauncherState, itemId: Long, widget: ItemContent): LauncherState? {
+        if (widget !is ItemContent.Widget && widget !is ItemContent.Builtin) return null
+        val item = state.items.firstOrNull { it.id == itemId } ?: return null
+        val stack = when (val c = item.content) {
+            is ItemContent.Stack -> c.copy(widgets = c.widgets + widget)
+            is ItemContent.Widget, is ItemContent.Builtin -> ItemContent.Stack(listOf(c, widget))
+            else -> return null
+        }
+        return updateContent(state, itemId, stack)
+    }
+
+    /** Takes one widget out of a stack and returns it, so a hosted widget can be released. */
+    fun removeFromStack(state: LauncherState, itemId: Long, index: Int): Pair<LauncherState, ItemContent?> {
+        val item = state.items.firstOrNull { it.id == itemId } ?: return state to null
+        val stack = item.content as? ItemContent.Stack ?: return state to null
+        val removed = stack.widgets.getOrNull(index) ?: return state to null
+        val left = stack.widgets.filterIndexed { i, _ -> i != index }
+        val next = when (left.size) {
+            0 -> remove(state, itemId)
+            1 -> updateContent(state, itemId, left.single())
+            else -> updateContent(state, itemId, stack.copy(widgets = left))
+        }
+        return next to removed
+    }
+
+    /** Replaces one widget inside a stack, e.g. after restyling it. */
+    fun updateStackChild(state: LauncherState, itemId: Long, index: Int, content: ItemContent): LauncherState {
+        val item = state.items.firstOrNull { it.id == itemId } ?: return state
+        val stack = item.content as? ItemContent.Stack ?: return state
+        if (index !in stack.widgets.indices) return state
+        return updateContent(state, itemId, stack.copy(widgets = stack.widgets.mapIndexed { i, w -> if (i == index) content else w }))
+    }
+
     /** Resizes an item, sliding it left/up if needed to stay on the grid. */
     fun resize(state: LauncherState, itemId: Long, spanX: Int, spanY: Int): LauncherState? {
         val item = state.items.firstOrNull { it.id == itemId } ?: return null

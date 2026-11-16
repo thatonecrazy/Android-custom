@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
+import android.graphics.drawable.Drawable
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Handler
@@ -160,6 +162,31 @@ class AppsRepository(private val context: Context, private val scope: CoroutineS
             Log.w("Veneer", "Could not launch ${key.component}", e)
             Toast.makeText(context, "Couldn't open that app", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** True when Android lets Veneer read app shortcuts (only the default home app may). */
+    fun canUseShortcuts(): Boolean = runCatching { launcherApps.hasShortcutHostPermission() }.getOrDefault(false)
+
+    /** The app's shortcuts ("New message", "Navigate home"...): its fixed ones first, then dynamic ones. */
+    fun shortcuts(key: AppKey): List<ShortcutInfo> {
+        if (!canUseShortcuts()) return emptyList()
+        val user = userManager.getUserForSerialNumber(key.userSerial) ?: return emptyList()
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(key.component.packageName)
+            .setActivity(key.component)
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC)
+        val all = runCatching { launcherApps.getShortcuts(query, user) }.getOrNull().orEmpty()
+        return all.filter { it.isEnabled }
+            .sortedWith(compareBy<ShortcutInfo>({ if (it.isDeclaredInManifest) 0 else 1 }, { it.rank }))
+            .take(4)
+    }
+
+    fun shortcutIcon(info: ShortcutInfo): Drawable? =
+        runCatching { launcherApps.getShortcutIconDrawable(info, context.resources.displayMetrics.densityDpi) }.getOrNull()
+
+    fun startShortcut(info: ShortcutInfo) {
+        runCatching { launcherApps.startShortcut(info, null, null) }
+            .onFailure { Toast.makeText(context, "Couldn't open that shortcut", Toast.LENGTH_SHORT).show() }
     }
 
     fun openAppInfo(key: AppKey) {

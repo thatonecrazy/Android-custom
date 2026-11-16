@@ -13,7 +13,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import app.veneer.apps.AppKey
-import app.veneer.data.ItemContent
 import app.veneer.ui.launcher.HomeController
 import app.veneer.ui.launcher.LauncherActions
 import app.veneer.ui.launcher.LauncherRoot
@@ -30,6 +29,9 @@ class MainActivity : ComponentActivity(), LauncherActions {
     /** A widget id that has been allocated but not placed yet (waiting on bind or configure). */
     private var pendingWidgetId = -1
 
+    /** The stack the pending widget goes into, or -1 for the home screen. */
+    private var pendingStack = -1L
+
     private val bindWidget = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val id = pendingWidgetId
         if (id == -1) return@registerForActivityResult
@@ -45,10 +47,11 @@ class MainActivity : ComponentActivity(), LauncherActions {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         pendingWidgetId = savedInstanceState?.getInt(KEY_PENDING_WIDGET, -1) ?: -1
+        pendingStack = savedInstanceState?.getLong(KEY_PENDING_STACK, -1L) ?: -1L
         widgetHost = WidgetHost(this)
         controller = HomeController(veneer, ViewConfiguration.get(this).scaledTouchSlop.toFloat())
         if (savedInstanceState == null && pendingWidgetId == -1) {
-            val placed = veneer.store.current.items.mapNotNull { (it.content as? ItemContent.Widget)?.appWidgetId }.toSet()
+            val placed = veneer.store.current.items.flatMap { HomeController.widgetIds(it.content) }.toSet()
             widgetHost.deleteOrphans(placed)
         }
         setContent { LauncherRoot(controller, this) }
@@ -73,6 +76,7 @@ class MainActivity : ComponentActivity(), LauncherActions {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_PENDING_WIDGET, pendingWidgetId)
+        outState.putLong(KEY_PENDING_STACK, pendingStack)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -89,6 +93,7 @@ class MainActivity : ComponentActivity(), LauncherActions {
     override fun addSystemWidget(info: AppWidgetProviderInfo) {
         val id = widgetHost.allocateId()
         pendingWidgetId = id
+        pendingStack = controller.stackTargetId ?: -1L
         if (widgetHost.bindIfAllowed(id, info)) {
             configureOrPlace(id, info)
         } else {
@@ -114,13 +119,15 @@ class MainActivity : ComponentActivity(), LauncherActions {
         val t = veneer.store.current.theme
         val bounds = controller.gridBounds
         val (sx, sy) = widgetSpan(info, bounds.width / t.gridColumns, bounds.height / t.gridRows, t.gridColumns, t.gridRows)
-        controller.addSystemWidget(id, WidgetHost.providerString(info), sx, sy)
+        controller.addSystemWidget(id, WidgetHost.providerString(info), sx, sy, pendingStack.takeIf { it >= 0 })
         pendingWidgetId = -1
+        pendingStack = -1L
     }
 
     private fun abandonPending() {
         if (pendingWidgetId != -1) widgetHost.deleteId(pendingWidgetId)
         pendingWidgetId = -1
+        pendingStack = -1L
     }
 
     @Deprecated("Widget configuration still reports back through onActivityResult")
@@ -149,6 +156,7 @@ class MainActivity : ComponentActivity(), LauncherActions {
 
     private companion object {
         const val KEY_PENDING_WIDGET = "pending_widget"
+        const val KEY_PENDING_STACK = "pending_stack"
         const val REQ_CONFIGURE = 1201
         const val REQ_RECONFIGURE = 1202
     }

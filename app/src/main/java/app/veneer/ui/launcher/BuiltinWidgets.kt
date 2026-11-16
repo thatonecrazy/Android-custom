@@ -128,7 +128,8 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
     val theme = LocalLauncherTheme.current
     val textColor = Color(style.color ?: theme.labelColor)
     val shadow = style.shadow ?: theme.labelShadow
-    val background = style.background ?: if (kind == BuiltinKind.Search) theme.dockBg else 0
+    val background = style.background
+        ?: if (kind == BuiltinKind.Search || kind == BuiltinKind.Media || kind == BuiltinKind.Agenda) theme.dockBg else 0
     val align = when (style.align) {
         WidgetAlign.Start -> TextAlign.Start
         WidgetAlign.Center -> TextAlign.Center
@@ -208,6 +209,8 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
                 val text = "${battery.percent}%" + if (battery.charging) " ⚡" else ""
                 FittedText(text, base, style.sizeSp, Modifier.fillMaxWidth())
             }
+            BuiltinKind.Media -> MusicWidget(base, style.sizeSp, textColor)
+            BuiltinKind.Agenda -> AgendaWidget(base, style.sizeSp, textColor)
         }
     }
     }

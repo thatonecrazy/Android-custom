@@ -41,6 +41,15 @@ object SystemActions {
         }
     }
 
+    /** Pulls down quick settings, through the same StatusBarManager method as the notification shade. */
+    @SuppressLint("WrongConstant", "PrivateApi")
+    fun expandQuickSettings(context: Context) {
+        runCatching {
+            val service = context.getSystemService("statusbar")
+            Class.forName("android.app.StatusBarManager").getMethod("expandSettingsPanel").invoke(service)
+        }
+    }
+
     fun isDefaultLauncher(context: Context): Boolean {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val resolved = context.packageManager.resolveActivity(intent, 0)
