@@ -78,6 +78,7 @@ import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
 import app.veneer.system.SystemActions
+import app.veneer.ui.common.EdgeGlowOverlay
 import app.veneer.ui.common.EditAppScreen
 import app.veneer.ui.common.WallpaperPreview
 import app.veneer.ui.launcher.AppIcon
@@ -137,6 +138,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
     val section = Section.from(sectionId)
 
     SettingsTheme(state.theme, font) {
+      Box(Modifier.fillMaxSize()) {
         val editing = editingAppId?.let { id -> apps.firstOrNull { it.key.id == id } }
         when {
             editing != null -> SectionColors(Section.Apps.color) { EditAppScreen(editing) { editingAppId = null } }
@@ -161,6 +163,8 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
                 }
             }
         }
+        EdgeGlowOverlay()
+      }
     }
 }
 

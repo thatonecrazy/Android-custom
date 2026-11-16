@@ -43,6 +43,7 @@ import app.veneer.icons.IconRenderer
 import app.veneer.icons.IconSource
 import app.veneer.icons.iconSpec
 import app.veneer.system.Wallpapers
+import app.veneer.ui.common.GlowBus
 import app.veneer.ui.customize.withLookOf
 import app.veneer.ui.launcher.HomeController
 import org.junit.Assert.assertEquals
@@ -238,6 +239,27 @@ class ScreensTest {
             compose.waitForIdle()
             compose.onNodeWithText("= 40").assertExists()
             shot("drawer-calculator", Presets.all.first().wallpaper)
+        }
+    }
+
+    @Test
+    fun ghoulThemeGlowsOnUnlock() {
+        val ghoul = Presets.all.first { it.name == "Ghoul" }
+        app.store.update { s ->
+            val clock = s.items.first { (it.content as? ItemContent.Builtin)?.kind == BuiltinKind.ClockDate }
+            val c = clock.content as ItemContent.Builtin
+            var next = LayoutOps.updateContent(s, clock.id, c.copy(style = c.style.copy(text = "HELLO!")))
+            next = LayoutOps.addAt(next, ItemContent.Builtin(BuiltinKind.Battery, HomeController.defaultStyle(BuiltinKind.Battery)), Spot(1, 0, 0), 2, 1)
+            next.copy(theme = next.theme.withLookOf(ghoul))
+        }
+        launchHome().use {
+            compose.onNodeWithText("HELLO!").assertExists()
+            shot("home-ghoul-hello", ghoul.wallpaper)
+            compose.mainClock.autoAdvance = false
+            GlowBus.fire(ghoul.edgeGlowColor!!)
+            compose.mainClock.advanceTimeBy(1100)
+            shot("home-ghoul-glow", ghoul.wallpaper)
+            compose.mainClock.autoAdvance = true
         }
     }
 

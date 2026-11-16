@@ -118,7 +118,7 @@ object Wallpapers {
         val h = height.toFloat()
         val stops = listOfNotNull(spec.color1, spec.color2, spec.color3).toIntArray()
         paint.shader = when (spec.style) {
-            WallpaperStyle.Solid, WallpaperStyle.Aurora -> null
+            WallpaperStyle.Solid, WallpaperStyle.Aurora, WallpaperStyle.Tendrils -> null
             WallpaperStyle.Vertical -> LinearGradient(0f, 0f, 0f, h, stops, null, Shader.TileMode.CLAMP)
             WallpaperStyle.Diagonal -> LinearGradient(0f, 0f, w, h, stops, null, Shader.TileMode.CLAMP)
             WallpaperStyle.Radial -> RadialGradient(
@@ -128,6 +128,8 @@ object Wallpapers {
         if (spec.style == WallpaperStyle.Solid) paint.color = spec.color1
         if (spec.style == WallpaperStyle.Aurora) {
             drawAurora(canvas, spec, w, h)
+        } else if (spec.style == WallpaperStyle.Tendrils) {
+            Tendrils.draw(canvas, spec, w, h)
         } else {
             canvas.drawRect(0f, 0f, w, h, paint)
         }

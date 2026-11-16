@@ -7,6 +7,28 @@ object Presets {
             name = "Default",
             wallpaper = WallpaperSpec(WallpaperStyle.Aurora, 0xFF6C4BFF.toInt(), 0xFFFF4D9A.toInt(), 0xFF1FC8FF.toInt()),
         ),
+        // Inspired by Tokyo Ghoul: black, crimson and white, red-glyph icons and a code-drawn wallpaper.
+        ThemeConfig(
+            name = "Ghoul",
+            iconShape = IconShape.RoundedSquare,
+            iconStyle = IconStyle.Themed,
+            themedFg = 0xFFFF2A3A.toInt(),
+            themedBg = 0xFF150708.toInt(),
+            legacyBg = 0xFF150708.toInt(),
+            fontId = "bebas",
+            labelSizeSp = 14,
+            labelColor = 0xFFF3ECEC.toInt(),
+            labelShadow = true,
+            dockBg = 0xB30C0304.toInt(),
+            dockCornerDp = 30,
+            drawerBg = 0xF5070304.toInt(),
+            drawerTextColor = 0xFFF3ECEC.toInt(),
+            accent = 0xFFE3192B.toInt(),
+            edgeGlow = true,
+            edgeGlowColor = 0xFFFF1F33.toInt(),
+            soundModeGlow = true,
+            wallpaper = WallpaperSpec(WallpaperStyle.Tendrils, 0xFFB80E1B.toInt(), 0xFF3A0509.toInt(), 0xFFFF2233.toInt()),
+        ),
         ThemeConfig(
             name = "Sunset",
             iconShape = IconShape.Squircle,
@@ -164,6 +186,6 @@ object Presets {
 
 /** Colorful looks first, calm ones after. */
 private val ORDER = listOf(
-    "Default", "Sunset", "Candy", "Ocean", "Neon", "Playful", "Glass", "Leaf",
+    "Default", "Ghoul", "Sunset", "Candy", "Ocean", "Neon", "Playful", "Glass", "Leaf",
     "Paper", "Minimal Mono", "Terminal", "Elegant",
 )

@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -169,7 +171,10 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
                 val text = remember(now, style.use24h, style.showSeconds) {
                     SimpleDateFormat(clockPattern(context, style), Locale.getDefault()).format(Date(now))
                 }
-                FittedText(text.cased(), base, style.sizeSp, Modifier.fillMaxWidth())
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = horizontal) {
+                    Header(style.text.cased(), base, style.sizeSp)
+                    FittedText(text.cased(), base, style.sizeSp, Modifier.fillMaxWidth())
+                }
             }
             BuiltinKind.Date -> {
                 val now by rememberNow(false)
@@ -183,6 +188,7 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
                 }
                 val date = remember(now) { SimpleDateFormat(datePattern(), Locale.getDefault()).format(Date(now)) }
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = horizontal, verticalArrangement = Arrangement.Center) {
+                    Header(style.text.cased(), base, style.sizeSp)
                     FittedText(time.cased(), base, style.sizeSp, Modifier.fillMaxWidth().weight(1f, fill = false))
                     FittedText(date.cased(), base, (style.sizeSp * 0.26f).toInt().coerceAtLeast(10), Modifier.fillMaxWidth())
                 }
@@ -207,13 +213,36 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
             BuiltinKind.Battery -> {
                 val battery by rememberBattery()
                 val text = "${battery.percent}%" + if (battery.charging) " ⚡" else ""
-                FittedText(text, base, style.sizeSp, Modifier.fillMaxWidth())
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = horizontal) {
+                    FittedText(text, base, style.sizeSp, Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(6.dp))
+                    // Ten dots that fill up with the charge, in the accent color.
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        repeat(10) { i ->
+                            val filled = i < (battery.percent + 5) / 10
+                            Box(
+                                Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (filled) Color(theme.accent) else textColor.copy(alpha = 0.25f)),
+                            )
+                        }
+                    }
+                }
             }
             BuiltinKind.Media -> MusicWidget(base, style.sizeSp, textColor)
             BuiltinKind.Agenda -> AgendaWidget(base, style.sizeSp, textColor)
         }
     }
     }
+}
+
+/** The optional short line above a clock, like "HELLO!". */
+@Composable
+private fun Header(text: String, base: TextStyle, sizeSp: Int) {
+    val line = text.trim()
+    if (line.isEmpty()) return
+    FittedText(line, base, (sizeSp * 0.28f).toInt().coerceAtLeast(12), Modifier.fillMaxWidth())
 }
 
 /** Text that shrinks to fit its box, never growing past [maxSp]. */

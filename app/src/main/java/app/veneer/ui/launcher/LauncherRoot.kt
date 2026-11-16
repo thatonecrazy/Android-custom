@@ -30,6 +30,8 @@ import app.veneer.data.BarIcons
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.system.NotificationDotsService
+import app.veneer.ui.common.EdgeGlowOverlay
+import app.veneer.ui.common.EdgeGlowTriggers
 import app.veneer.ui.common.EditAppScreen
 import app.veneer.ui.theme.LauncherTheme
 
@@ -68,6 +70,7 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
     }
 
     val notificationCounts by NotificationDotsService.counts.collectAsStateWithLifecycle()
+    EdgeGlowTriggers(theme)
 
     // Status bar: hidden or shown, with light or dark icons. The drawer picks icons that suit its background.
     val view = LocalView.current
@@ -115,6 +118,7 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
             if (controller.homeMenuOpen) HomeMenuSheet(controller, actions)
             controller.editingStyle?.let { WidgetStyleSheet(controller, it) }
             controller.resizingItemId?.let { ResizeDialog(controller, it) }
+            EdgeGlowOverlay()
             controller.editingApp?.let { key ->
                 val entry = appMap[key.id]
                 if (entry != null) {

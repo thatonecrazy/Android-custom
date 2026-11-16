@@ -4,7 +4,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -29,6 +32,7 @@ import app.veneer.data.ThemeConfig
 import app.veneer.system.LockService
 import app.veneer.system.NotificationDotsService
 import app.veneer.ui.common.ChoiceRow
+import app.veneer.ui.common.GlowBus
 import app.veneer.ui.common.ClickRow
 import app.veneer.ui.common.ColorRow
 import app.veneer.ui.common.FloatSliderRow
@@ -117,6 +121,34 @@ fun HomeLayoutScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> U
                         icon = Icons.Filled.NotificationsActive,
                     ) { NotificationDotsService.requestAccess(context) }
                 }
+            }
+        }
+
+        item { SectionHeader("Edge glow") }
+        item {
+            SettingCard {
+                SwitchRow(
+                    "Glow when you unlock",
+                    theme.edgeGlow,
+                    "A light sweeps around the screen edge as you unlock, like Samsung's edge lighting",
+                    icon = Icons.Filled.Lightbulb,
+                ) { b -> update { it.copy(edgeGlow = b) } }
+                ColorRow(
+                    "Glow color",
+                    theme.edgeGlowColor ?: theme.accent,
+                    if (theme.edgeGlowColor == null) "Same as the accent color" else null,
+                    allowAlpha = false,
+                ) { c -> update { it.copy(edgeGlowColor = c) } }
+                SwitchRow(
+                    "Glow when the sound mode changes",
+                    theme.soundModeGlow,
+                    "Green for sound, blue for vibrate, red for silent",
+                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                ) { b -> update { it.copy(soundModeGlow = b) } }
+                ClickRow("Try it", "Plays the glow once now", icon = Icons.Filled.AutoAwesome) {
+                    GlowBus.fire(theme.edgeGlowColor ?: theme.accent)
+                }
+                NoteText("The glow shows on Veneer's screens. For a glow over every app, Samsung phones can do the same with Modes and Routines.")
             }
         }
 

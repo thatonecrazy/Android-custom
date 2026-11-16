@@ -52,6 +52,8 @@ enum class WallpaperStyle(val label: String) {
     Diagonal("Diagonal"),
     Radial("Glow"),
     Aurora("Aurora"),
+    /** Dark, with glowing segmented tendrils; a third color adds a watching eye. */
+    Tendrils("Tendrils"),
 }
 
 /** A wallpaper the app can generate itself: a solid color or a two-color gradient. */
@@ -110,6 +112,12 @@ data class ThemeConfig(
     /** The app each gesture opens when it's set to [GestureAction.OpenApp], keyed by gesture name. */
     val gestureApps: Map<String, String> = emptyMap(),
     val notificationDots: Boolean = true,
+
+    // A light that runs around the screen edge, like Samsung's edge lighting
+    val edgeGlow: Boolean = false,
+    /** Null uses the accent color. */
+    val edgeGlowColor: Int? = null,
+    val soundModeGlow: Boolean = false,
 
     // App drawer
     val drawerColumns: Int = 4,

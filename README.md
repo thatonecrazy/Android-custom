@@ -2,7 +2,11 @@
 
 A home-screen app for Android that lets you restyle what you see every day: every app icon, the fonts, the widgets, the app list, the wallpaper and the system colors that follow it.
 
-![All twelve themes](docs/themes.png)
+![All thirteen themes](docs/themes.png)
+
+| Ghoul | Ghoul with the edge glow |
+| --- | --- |
+| ![Ghoul theme](docs/screenshots/home-ghoul-hello.png) | ![Edge glow on unlock](docs/screenshots/home-ghoul-glow.png) |
 
 ![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
 
@@ -51,11 +55,13 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - App list columns, background and text color.
 
 **Wallpaper and system colors**
-- Set a picture as wallpaper, or generate one: solid, vertical, diagonal, glow, or aurora (soft overlapping glows), with two or three colors.
+- Set a picture as wallpaper, or generate one: solid, vertical, diagonal, glow, aurora (soft overlapping glows) or tendrils, with two or three colors.
+- Edge glow: a light sweeps around the screen edge when you unlock, and in green, blue or red when the sound mode changes (like Samsung's edge lighting routines).
 - On Android 12 and newer the phone takes its system colors (quick settings, Settings, keyboard, Material You apps) from the wallpaper, so the gradient maker doubles as a system color picker.
 
 **Themes**
-- Twelve ready-made looks, each with a matching wallpaper: Default, Sunset, Candy, Ocean, Neon, Playful, Glass, Leaf, Paper, Minimal Mono, Terminal, Elegant.
+- Thirteen ready-made looks, each with a matching wallpaper: Default, Ghoul, Sunset, Candy, Ocean, Neon, Playful, Glass, Leaf, Paper, Minimal Mono, Terminal, Elegant.
+- Ghoul is inspired by the look of Tokyo Ghoul: black, crimson and white, red-glyph icons, a tall condensed font, and an original code-drawn wallpaper of glowing tendrils and a red eye. No artwork from the series is included; set your own picture as the wallpaper if you like.
 - Save your own looks, export them to a file to share, import theme files.
 - Back up and restore your whole setup.
 

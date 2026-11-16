@@ -224,8 +224,14 @@ fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
                 }
                 SwitchRow("Show seconds", style.showSeconds) { b -> update { it.copy(showSeconds = b) } }
             }
-            if (content.kind == BuiltinKind.Text || content.kind == BuiltinKind.Greeting) {
-                SectionHeader(if (content.kind == BuiltinKind.Text) "Text" else "Your name (optional)")
+            if (content.kind in setOf(BuiltinKind.Text, BuiltinKind.Greeting, BuiltinKind.Clock, BuiltinKind.ClockDate)) {
+                SectionHeader(
+                    when (content.kind) {
+                        BuiltinKind.Text -> "Text"
+                        BuiltinKind.Greeting -> "Your name (optional)"
+                        else -> "Line above the time (optional), like HELLO!"
+                    },
+                )
                 var text by remember { mutableStateOf(style.text) }
                 OutlinedTextField(
                     value = text,
