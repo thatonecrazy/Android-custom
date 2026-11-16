@@ -42,6 +42,7 @@ import app.veneer.data.WallpaperSpec
 import app.veneer.icons.IconRenderer
 import app.veneer.icons.IconSource
 import app.veneer.icons.iconSpec
+import app.veneer.system.PhotoWallpapers
 import app.veneer.system.Wallpapers
 import app.veneer.ui.common.GlowBus
 import app.veneer.ui.customize.withLookOf
@@ -111,7 +112,7 @@ class ScreensTest {
         val image = compose.onAllNodes(isRoot()).onFirst().captureToImage().asAndroidBitmap()
         val out = createBitmap(image.width, image.height)
         val canvas = Canvas(out)
-        if (wallpaper != null) canvas.drawBitmap(Wallpapers.render(wallpaper, image.width, image.height), 0f, 0f, null)
+        if (wallpaper != null) canvas.drawBitmap(Wallpapers.render(wallpaper, image.width, image.height, app), 0f, 0f, null)
         else canvas.drawColor(Color.BLACK)
         canvas.drawBitmap(image, 0f, 0f, null)
         File(dir).mkdirs()
@@ -303,7 +304,7 @@ class ScreensTest {
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
             compose.onNodeWithText("Wallpaper").performClick()
-            compose.onNodeWithText("Make a gradient").assertExists()
+            compose.onNodeWithText("Photo wallpapers").assertExists()
             shot("customize-wallpaper", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
@@ -318,6 +319,32 @@ class ScreensTest {
             compose.waitForIdle()
             assertEquals("orbitron", app.store.current.theme.fontId)
             assertEquals(IconShape.Hexagon, app.store.current.theme.iconShape)
+        }
+    }
+
+    @Test
+    fun shuffleImportsPicturesAndMovesToTheNextOne() {
+        val pictures = (0 until 3).map { i ->
+            val file = File(app.cacheDir, "pick$i.png")
+            val bmp = createBitmap(400, 800).apply { eraseColor(listOf(Color.RED, Color.BLACK, Color.WHITE)[i]) }
+            file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            android.net.Uri.fromFile(file)
+        }
+        val names = kotlinx.coroutines.runBlocking { app.shuffler.import(pictures) }
+        assertEquals(3, names.size)
+        app.store.update { it.copy(shuffle = it.shuffle.copy(enabled = true, files = names)) }
+        assertTrue(kotlinx.coroutines.runBlocking { app.shuffler.next() })
+        assertTrue(kotlinx.coroutines.runBlocking { app.shuffler.next() })
+        assertEquals(2, app.store.current.shuffle.next)
+        assertTrue(app.store.current.shuffle.lastChange > 0)
+    }
+
+    @Test
+    fun photoWallpapersLoad() {
+        for (photo in PhotoWallpapers.all) {
+            val bmp = Wallpapers.render(WallpaperSpec(photo = photo.id), 270, 540, app)
+            assertEquals(270, bmp.width)
+            assertTrue("${photo.id} should be a real picture", Color.alpha(bmp.getPixel(135, 270)) == 255)
         }
     }
 

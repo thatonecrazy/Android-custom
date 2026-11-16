@@ -64,6 +64,34 @@ data class WallpaperSpec(
     val color2: Int = 0xFFC33764.toInt(),
     /** An optional third color, for three-color gradients and aurora glows. */
     val color3: Int? = null,
+    /** A bundled photo (see PhotoWallpapers) used instead of the generated art. */
+    val photo: String? = null,
+)
+
+/** How often the wallpaper shuffle moves to the next picture. It always changes while the screen is off. */
+@Serializable
+enum class ShuffleInterval(val label: String, val millis: Long) {
+    EveryLock("Every time you lock", 0),
+    Hourly("Every hour", 60 * 60 * 1000L),
+    Daily("Every day", 24 * 60 * 60 * 1000L),
+}
+
+@Serializable
+enum class ShuffleTarget(val label: String) {
+    Both("Home and lock"),
+    Home("Home screen"),
+    Lock("Lock screen"),
+}
+
+/** Your own pictures, shown as the wallpaper one after another. Files live in the app's private storage. */
+@Serializable
+data class WallpaperShuffle(
+    val enabled: Boolean = false,
+    val files: List<String> = emptyList(),
+    val interval: ShuffleInterval = ShuffleInterval.EveryLock,
+    val target: ShuffleTarget = ShuffleTarget.Both,
+    val next: Int = 0,
+    val lastChange: Long = 0,
 )
 
 /**
@@ -243,4 +271,5 @@ data class LauncherState(
     val savedThemes: List<ThemeConfig> = emptyList(),
     val nextId: Long = 1,
     val firstRunDone: Boolean = false,
+    val shuffle: WallpaperShuffle = WallpaperShuffle(),
 )

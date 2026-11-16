@@ -7,6 +7,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import app.veneer.data.ShuffleInterval
+import app.veneer.data.ShuffleTarget
+import app.veneer.system.PhotoWallpapers
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -78,9 +99,20 @@ import java.util.Locale
 fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) {
     val context = LocalContext.current
     val app = context.veneer
-    var spec by remember { mutableStateOf(state.theme.wallpaper ?: WallpaperSpec()) }
-    var chooseTarget by remember { mutableStateOf<((WallpaperTarget) -> Unit)?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var spec by remember { mutableStateOf((state.theme.wallpaper ?: WallpaperSpec()).copy(photo = null)) }
+    val shuffle = state.shuffle
+    val scope = rememberCoroutineScope()
+    val addPictures = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
+        if (uris.isNotEmpty()) scope.launch {
+            busy = true
+            val names = app.shuffler.import(uris)
+            app.store.update { st -> st.copy(shuffle = st.shuffle.copy(files = st.shuffle.files + names, enabled = true)) }
+            busy = false
+            Toast.makeText(context, "Added ${names.size} picture${if (names.size == 1) "" else "s"}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    var chooseTarget by remember { mutableStateOf<((WallpaperTarget) -> Unit)?>(null) }
 
     fun finish(ok: Boolean) {
         busy = false
@@ -107,6 +139,73 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                 }
             }
         }
+        item { SectionHeader("Photo wallpapers") }
+        item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(PhotoWallpapers.all, key = { it.id }) { photo ->
+                    Column(
+                        Modifier
+                            .width(120.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable {
+                                val chosen = WallpaperSpec(photo = photo.id)
+                                chooseTarget = { target ->
+                                    busy = true
+                                    app.scope.launch { finish(Wallpapers.applyGenerated(context.applicationContext, chosen, target)) }
+                                }
+                            },
+                    ) {
+                        WallpaperPreview(
+                            WallpaperSpec(photo = photo.id),
+                            Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(20.dp)),
+                        )
+                        Text(photo.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
+                    }
+                }
+            }
+        }
+        item { NoteText("Free-to-use photos from Wikimedia Commons, recolored for Veneer. Credits are under Backup → Photo credits.") }
+
+        item { SectionHeader("Your pictures on shuffle") }
+        item {
+            SettingCard {
+                if (shuffle.files.isNotEmpty()) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(shuffle.files, key = { it }) { name -> ShuffleThumb(name) {
+                            app.shuffler.delete(name)
+                            app.store.update { st -> st.copy(shuffle = st.shuffle.copy(files = st.shuffle.files - name)) }
+                        } }
+                    }
+                }
+                ClickRow(
+                    "Add pictures",
+                    if (shuffle.files.isEmpty()) "Pick any number of pictures from your phone" else "${shuffle.files.size} in the shuffle",
+                    icon = Icons.Filled.AddPhotoAlternate,
+                ) { addPictures.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                if (shuffle.files.isNotEmpty()) {
+                    SwitchRow("Shuffle", shuffle.enabled, "Changes while your screen is off, so a new picture greets you at unlock") { on ->
+                        app.store.update { st -> st.copy(shuffle = st.shuffle.copy(enabled = on)) }
+                    }
+                    ChoiceRow("How often", ShuffleInterval.entries, shuffle.interval, { it.label }) { v ->
+                        app.store.update { st -> st.copy(shuffle = st.shuffle.copy(interval = v)) }
+                    }
+                    ChoiceRow("Where", ShuffleTarget.entries, shuffle.target, { it.label }) { v ->
+                        app.store.update { st -> st.copy(shuffle = st.shuffle.copy(target = v)) }
+                    }
+                    ClickRow("Show the next one now", icon = Icons.Filled.SkipNext) {
+                        busy = true
+                        app.scope.launch { finish(app.shuffler.next()) }
+                    }
+                }
+            }
+        }
+
         item { SectionHeader("Make a gradient") }
         item {
             SettingCard {
@@ -230,6 +329,7 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
     var licenses by remember { mutableStateOf<String?>(null) }
+    var licensesTitle by remember { mutableStateOf("Font licenses") }
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
@@ -291,8 +391,17 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
                 ClickRow("Veneer $version", "A home screen you can restyle from top to bottom", icon = Icons.Filled.Favorite) {}
                 ClickRow("Font licenses", "The bundled fonts are free under the SIL Open Font License", icon = Icons.Filled.Description) {
                     scope.launch {
+                        licensesTitle = "Font licenses"
                         licenses = withContext(Dispatchers.IO) {
                             runCatching { context.assets.open("font_licenses.txt").use { it.readBytes().decodeToString() } }.getOrNull()
+                        }
+                    }
+                }
+                ClickRow("Photo credits", "Who took the bundled wallpaper photos, and their licenses", icon = Icons.Filled.Image) {
+                    scope.launch {
+                        licensesTitle = "Photo credits"
+                        licenses = withContext(Dispatchers.IO) {
+                            runCatching { context.assets.open("photo_credits.txt").use { it.readBytes().decodeToString() } }.getOrNull()
                         }
                     }
                 }
@@ -316,7 +425,7 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
     licenses?.let { text ->
         AlertDialog(
             onDismissRequest = { licenses = null },
-            title = { Text("Font licenses") },
+            title = { Text(licensesTitle) },
             text = {
                 Box(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                     Text(text, fontFamily = FontFamily.Monospace, fontSize = 11.sp, style = MaterialTheme.typography.bodySmall)
@@ -324,5 +433,34 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
             },
             confirmButton = { TextButton(onClick = { licenses = null }) { Text("Close") } },
         )
+    }
+}
+
+@Composable
+private fun ShuffleThumb(name: String, onRemove: () -> Unit) {
+    val app = LocalContext.current.veneer
+    val density = LocalDensity.current
+    val image by produceState<ImageBitmap?>(null, name) {
+        value = withContext(Dispatchers.IO) {
+            app.shuffler.thumbnail(name, with(density) { 160.dp.roundToPx() })?.asImageBitmap()
+        }
+    }
+    Box(
+        Modifier
+            .size(width = 72.dp, height = 128.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+    ) {
+        image?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize()) }
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable(onClick = onRemove),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.Close, contentDescription = "Remove", tint = Color.White, modifier = Modifier.size(16.dp)) }
     }
 }

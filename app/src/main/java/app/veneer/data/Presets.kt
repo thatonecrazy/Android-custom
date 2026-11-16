@@ -27,7 +27,7 @@ object Presets {
             edgeGlow = true,
             edgeGlowColor = 0xFFFF1F33.toInt(),
             soundModeGlow = true,
-            wallpaper = WallpaperSpec(WallpaperStyle.Tendrils, 0xFFB80E1B.toInt(), 0xFF3A0509.toInt(), 0xFFFF2233.toInt()),
+            wallpaper = WallpaperSpec(WallpaperStyle.Tendrils, 0xFFB80E1B.toInt(), 0xFF3A0509.toInt(), 0xFFFF2233.toInt(), photo = "higanbana"),
         ),
         ThemeConfig(
             name = "Sunset",

@@ -55,13 +55,15 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - App list columns, background and text color.
 
 **Wallpaper and system colors**
+- Photo wallpapers bundled with the app: Spider lilies, Lone lily and Mirror sky (free-to-use photos from Wikimedia Commons, recolored; credits in the app and below).
+- Wallpaper shuffle: pick any number of your own pictures and Veneer rotates them every time you lock, every hour or every day, on the home screen, lock screen or both. It switches while the screen is off.
 - Set a picture as wallpaper, or generate one: solid, vertical, diagonal, glow, aurora (soft overlapping glows) or tendrils, with two or three colors.
 - Edge glow: a light sweeps around the screen edge when you unlock, and in green, blue or red when the sound mode changes (like Samsung's edge lighting routines).
 - On Android 12 and newer the phone takes its system colors (quick settings, Settings, keyboard, Material You apps) from the wallpaper, so the gradient maker doubles as a system color picker.
 
 **Themes**
 - Thirteen ready-made looks, each with a matching wallpaper: Default, Ghoul, Sunset, Candy, Ocean, Neon, Playful, Glass, Leaf, Paper, Minimal Mono, Terminal, Elegant.
-- Ghoul is inspired by the look of Tokyo Ghoul: black, crimson and white, red-glyph icons, a tall condensed font, and an original code-drawn wallpaper of glowing tendrils and a red eye. No artwork from the series is included; set your own picture as the wallpaper if you like.
+- Ghoul is inspired by the look of Tokyo Ghoul: black, crimson and white, red-glyph icons, a tall condensed font, and red spider lilies on black (a free-to-use photo, recolored). No artwork from the series is included; put your own pictures on shuffle if you like.
 - Save your own looks, export them to a file to share, import theme files.
 - Back up and restore your whole setup.
 
@@ -134,5 +136,8 @@ Builds are signed with `app/debug.keystore`, a project-specific debug key commit
 | `ui/common/` | Shared controls, color picker, font picker, per-app editor |
 
 ## Licenses
+
+The bundled wallpaper photos come from Wikimedia Commons: "Lycoris Radiata 2017 2" by Chihiro H (CC BY 3.0), "Red spider lily (Lycoris radiata)" by Offnfopt (public domain) and "Uyuni Salt Lake (Salar de Uyuni), Bolivia, 12-2022" by Abel Maestro Garcia (public domain). They are cropped and recolored; full credits and links are in `app/src/main/assets/photo_credits.txt` and in the app under Backup → Photo credits.
+
 
 The bundled fonts are under the SIL Open Font License 1.1; their full license texts are in `app/src/main/assets/font_licenses.txt` and shown in the app under Backup and about.

@@ -1,0 +1,23 @@
+Photo wallpapers bundled with Veneer
+=====================================
+
+All three are from Wikimedia Commons. Veneer crops them to phone size and recolors them
+(red petals kept, everything else darkened; or a soft lavender tint).
+
+Spider lilies
+  "Lycoris Radiata 2017 2" by Chihiro H
+  https://commons.wikimedia.org/wiki/File:Lycoris_Radiata_2017_2_(228827637).jpeg
+  License: CC BY 3.0, https://creativecommons.org/licenses/by/3.0
+  Changes: cropped, background darkened, reds deepened.
+
+Lone lily
+  "Red spider lily (Lycoris radiata)" by Offnfopt
+  https://commons.wikimedia.org/wiki/File:Red_spider_lily_(Lycoris_radiata).webp
+  License: public domain.
+  Changes: cropped, background darkened, placed on black.
+
+Mirror sky
+  "Uyuni Salt Lake (Salar de Uyuni), Bolivia, 12-2022" by Abel Maestro Garcia
+  https://commons.wikimedia.org/wiki/File:Uyuni_Salt_Lake_(Salar_de_Uyuni),_Bolivia,_12-2022.jpg
+  License: public domain.
+  Changes: cropped to portrait, sharpened, lavender tint.

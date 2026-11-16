@@ -110,7 +110,11 @@ enum class WallpaperTarget(val label: String, val flags: Int) {
 /** Generates gradient wallpapers and sets wallpapers from pictures. */
 object Wallpapers {
 
-    fun render(spec: WallpaperSpec, width: Int, height: Int): Bitmap {
+    /** Draws [spec]. Photo wallpapers need a [context] to read the bundled photo; without one they fall back to the colors. */
+    fun render(spec: WallpaperSpec, width: Int, height: Int, context: Context? = null): Bitmap {
+        if (spec.photo != null && context != null) {
+            PhotoWallpapers.render(context, spec.photo, width, height)?.let { return it }
+        }
         val bmp = createBitmap(width, height)
         val canvas = Canvas(bmp)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG)
@@ -160,7 +164,7 @@ object Wallpapers {
         }
     }
 
-    private fun screenSize(context: Context): Pair<Int, Int> {
+    internal fun screenSize(context: Context): Pair<Int, Int> {
         val wm = WallpaperManager.getInstance(context)
         val dm = context.resources.displayMetrics
         val w = wm.desiredMinimumWidth.takeIf { it > 0 } ?: dm.widthPixels
@@ -172,7 +176,7 @@ object Wallpapers {
     suspend fun applyGenerated(context: Context, spec: WallpaperSpec, target: WallpaperTarget): Boolean =
         withContext(Dispatchers.Default) {
             val (w, h) = screenSize(context)
-            val bmp = render(spec, w, h)
+            val bmp = render(spec, w, h, context)
             runCatching { WallpaperManager.getInstance(context).setBitmap(bmp, null, true, target.flags) }
                 .also { bmp.recycle() }.isSuccess
         }
