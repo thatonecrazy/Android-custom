@@ -1,0 +1,201 @@
+package app.veneer.data
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/** Page index used for items that live in the dock instead of on a home page. */
+const val DOCK_PAGE = -1
+
+@Serializable
+enum class IconShape(val label: String) {
+    Original("System"),
+    Circle("Circle"),
+    Squircle("Squircle"),
+    RoundedSquare("Rounded"),
+    Square("Square"),
+    Teardrop("Teardrop"),
+    Leaf("Leaf"),
+    Hexagon("Hexagon"),
+}
+
+@Serializable
+enum class IconStyle(val label: String) {
+    Original("Full color"),
+    Themed("Themed"),
+    Grayscale("Grayscale"),
+}
+
+@Serializable
+enum class BarIcons(val label: String) {
+    Light("Light icons"),
+    Dark("Dark icons"),
+}
+
+@Serializable
+enum class WallpaperStyle(val label: String) {
+    Solid("Solid"),
+    Vertical("Vertical"),
+    Diagonal("Diagonal"),
+    Radial("Glow"),
+}
+
+/** A wallpaper the app can generate itself: a solid color or a two-color gradient. */
+@Serializable
+data class WallpaperSpec(
+    val style: WallpaperStyle = WallpaperStyle.Vertical,
+    val color1: Int = 0xFF1D2671.toInt(),
+    val color2: Int = 0xFFC33764.toInt(),
+)
+
+/**
+ * Everything about how the launcher looks. A theme can be saved, exported and shared
+ * independently of the home screen layout.
+ */
+@Serializable
+data class ThemeConfig(
+    val name: String = "Default",
+
+    // Icons
+    val iconPack: String? = null,
+    val iconShape: IconShape = IconShape.Squircle,
+    val iconSizeDp: Int = 54,
+    val iconStyle: IconStyle = IconStyle.Original,
+    val themedFg: Int = 0xFF1F2340.toInt(),
+    val themedBg: Int = 0xFFDDE3FF.toInt(),
+    val wrapLegacyIcons: Boolean = true,
+    val legacyBg: Int = 0xFFFFFFFF.toInt(),
+
+    // Labels and font
+    val fontId: String = "system",
+    val showHomeLabels: Boolean = true,
+    val showDrawerLabels: Boolean = true,
+    val labelSizeSp: Int = 12,
+    val labelColor: Int = 0xFFFFFFFF.toInt(),
+    val labelShadow: Boolean = true,
+    val labelBold: Boolean = false,
+
+    // Home screen
+    val gridColumns: Int = 4,
+    val gridRows: Int = 6,
+    val dockEnabled: Boolean = true,
+    val dockColumns: Int = 5,
+    val dockBg: Int = 0x33FFFFFF,
+    val dockCornerDp: Int = 28,
+    val pageIndicator: Boolean = true,
+    val wallpaperDim: Float = 0f,
+
+    // System bars and gestures
+    val hideStatusBar: Boolean = false,
+    val statusBarIcons: BarIcons = BarIcons.Light,
+    val swipeDownNotifications: Boolean = true,
+
+    // App drawer
+    val drawerColumns: Int = 4,
+    val drawerBg: Int = 0xEB101216.toInt(),
+    val drawerTextColor: Int = 0xFFFFFFFF.toInt(),
+
+    // Accent used for menus, highlights and the settings screens
+    val accent: Int = 0xFF8AB4F8.toInt(),
+
+    /** Optional wallpaper that goes with this theme (presets use it). */
+    val wallpaper: WallpaperSpec? = null,
+)
+
+@Serializable
+enum class BuiltinKind(val label: String, val defaultSpanX: Int, val defaultSpanY: Int) {
+    Clock("Clock", 4, 2),
+    Date("Date", 4, 1),
+    ClockDate("Clock and date", 4, 2),
+    Greeting("Greeting", 4, 1),
+    Text("Text", 4, 1),
+    Search("Search bar", 4, 1),
+    Battery("Battery", 2, 1),
+}
+
+@Serializable
+enum class WidgetAlign { Start, Center, End }
+
+/** Styling for the built-in widgets. Every field is user-editable. */
+@Serializable
+data class WidgetStyle(
+    /** Null means "use the theme font". */
+    val fontId: String? = null,
+    /** Null follows the theme's label color. */
+    val color: Int? = null,
+    val sizeSp: Int = 64,
+    val align: WidgetAlign = WidgetAlign.Center,
+    val bold: Boolean = false,
+    /** Null follows the phone's 12/24-hour setting. */
+    val use24h: Boolean? = null,
+    val showSeconds: Boolean = false,
+    val text: String = "",
+    /** Null means none, except the search bar, which then uses the dock color. */
+    val background: Int? = null,
+    val cornerDp: Int = 24,
+    /** Null follows the theme's label shadow setting. */
+    val shadow: Boolean? = null,
+    val uppercase: Boolean = false,
+)
+
+@Serializable
+sealed class ItemContent {
+    /** A launchable activity. [user] is the profile serial number (work profile apps differ). */
+    @Serializable
+    @SerialName("app")
+    data class App(val component: String, val user: Long) : ItemContent()
+
+    /** A widget provided by another app, hosted through AppWidgetHost. */
+    @Serializable
+    @SerialName("widget")
+    data class Widget(val appWidgetId: Int, val provider: String) : ItemContent()
+
+    /** One of Veneer's own styleable widgets. */
+    @Serializable
+    @SerialName("builtin")
+    data class Builtin(val kind: BuiltinKind, val style: WidgetStyle = WidgetStyle()) : ItemContent()
+}
+
+@Serializable
+data class HomeItem(
+    val id: Long,
+    /** Home page index, or [DOCK_PAGE]. */
+    val page: Int,
+    val x: Int,
+    val y: Int,
+    val spanX: Int = 1,
+    val spanY: Int = 1,
+    val content: ItemContent,
+)
+
+@Serializable
+sealed class IconRef {
+    @Serializable
+    @SerialName("pack")
+    data class Pack(val pack: String, val drawable: String) : IconRef()
+
+    /** A picture the user picked, copied into the app's private storage. */
+    @Serializable
+    @SerialName("image")
+    data class Image(val file: String) : IconRef()
+}
+
+/** Per-app customizations, keyed by [app.veneer.apps.AppKey.id]. */
+@Serializable
+data class AppOverride(
+    val label: String? = null,
+    val icon: IconRef? = null,
+    val hidden: Boolean = false,
+) {
+    val isEmpty: Boolean get() = label == null && icon == null && !hidden
+}
+
+@Serializable
+data class LauncherState(
+    val theme: ThemeConfig = ThemeConfig(),
+    val pageCount: Int = 1,
+    val items: List<HomeItem> = emptyList(),
+    val overrides: Map<String, AppOverride> = emptyMap(),
+    val savedThemes: List<ThemeConfig> = emptyList(),
+    val nextId: Long = 1,
+    val firstRunDone: Boolean = false,
+)
