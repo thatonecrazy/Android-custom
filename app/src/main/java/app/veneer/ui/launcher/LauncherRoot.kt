@@ -11,6 +11,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +33,9 @@ import app.veneer.data.BarIcons
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.system.NotificationDotsService
+import app.veneer.system.WidgetPhotos
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
 import app.veneer.ui.common.EdgeGlowOverlay
 import app.veneer.ui.common.EdgeGlowTriggers
 import app.veneer.ui.common.EditAppScreen
@@ -70,6 +76,20 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
     }
 
     val notificationCounts by NotificationDotsService.counts.collectAsStateWithLifecycle()
+
+    // Picking the picture for a photo widget.
+    val context = LocalContext.current
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        val target = controller.photoTarget
+        controller.photoTarget = null
+        if (uri != null && target != null) app.scope.launch {
+            val name = WidgetPhotos.save(context, uri) ?: return@launch
+            controller.updateBuiltinStyle(target) { it.copy(image = name) }
+        }
+    }
+    LaunchedEffect(controller.photoTarget) {
+        if (controller.photoTarget != null) pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
     EdgeGlowTriggers(theme)
 
     // Status bar: hidden or shown, with light or dark icons. The drawer picks icons that suit its background.

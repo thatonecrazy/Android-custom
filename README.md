@@ -8,6 +8,18 @@ A home-screen app for Android that lets you restyle what you see every day: ever
 | --- | --- |
 | ![Ghoul theme](docs/screenshots/home-ghoul-hello.png) | ![Edge glow on unlock](docs/screenshots/home-ghoul-glow.png) |
 
+### Ready-made widget layouts
+
+Six home screens modeled on the setups people share most online: one big "hero" widget (a photo or a large clock), two or three small ones underneath (weather, this month, music), glass cards and empty space for the wallpaper. Each one goes on a page of its own from the widget picker, and every widget in it can be restyled afterwards.
+
+| Hero photo | Big clock | Glass |
+| --- | --- | --- |
+| ![Hero photo layout](docs/screenshots/layout-hero-photo.png) | ![Big clock layout](docs/screenshots/layout-big-clock.png) | ![Glass layout](docs/screenshots/layout-glass.png) |
+
+| At a glance | Hello | Classic |
+| --- | --- | --- |
+| ![At a glance layout](docs/screenshots/layout-at-a-glance.png) | ![Hello layout](docs/screenshots/layout-hello.png) | ![Classic layout](docs/screenshots/layout-classic.png) |
+
 ![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
 
 | Folders | Stacks and music | Search does sums |
@@ -40,7 +52,10 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 
 **Widgets**
 - Any widget from your other apps: add, move, resize, open its settings.
-- Veneer's own widgets: clock, date, clock with date, greeting, text, search bar, battery, music (art, title and play controls for whatever's playing) and calendar agenda (your next events in each calendar's color). Each one has its own font, size, color, alignment, background and roundness.
+- Veneer's own widgets: clock, date, clock with date, greeting, text, search bar, battery (dots or a ring), music (art, title and play controls for whatever's playing) and calendar agenda (your next events in each calendar's color).
+- The most popular widget types from setup galleries: photo (your own picture, framed as a rounded card, pill, circle or square, optionally black and white), weather (a square tile or a slim bar), month calendar, analog clock, flip clock and "at a glance" (date, weather and your next event).
+- Each one has its own font, size, color, alignment and roundness, and a card behind it: none, frosted glass, dark or your accent color.
+- Ready-made layouts: whole home screens of widgets that fit together, added as a new page or as your first page.
 - Widget stacks: several widgets in one spot. Swipe up and down to switch between them.
 
 **Home screen, dock and app list**
@@ -97,6 +112,8 @@ To switch back, go to Settings → Apps → Default apps → Home app.
 | Hold near the screen edge while dragging | Move to the next page |
 | Hold an app in the app list | Add to home, change icon or name, hide, uninstall |
 | Tap the clock, date or battery widget | Alarms, calendar, battery settings |
+| Tap a photo widget | Pick its picture (hold it, then "Edit style" to change it later) |
+| Tap a weather widget | Weather settings: your location or a city, °C or °F |
 
 **Veneer** in the app list opens all the customization screens.
 
@@ -105,7 +122,9 @@ To switch back, go to Settings → Apps → Default apps → Home app.
 Veneer asks for these only when you turn on the feature that needs them:
 
 - **Notification access** for notification dots and the music widget (Android shares media sessions only with apps that have it).
-- **Calendar** for the calendar agenda widget.
+- **Calendar** for the calendar agenda and "at a glance" widgets.
+- **Approximate location** for the weather widgets, if you'd rather not pick a city. Only a rough position (rounded to about 1 km) is sent to [Open-Meteo](https://open-meteo.com), a free weather service that needs no account. Without it, weather works from the city you choose.
+- **Internet** is used only for the weather.
 - **Accessibility service** ("Veneer screen lock") only if you pick "Lock screen" for a gesture. Android reserves screen locking for accessibility services; this one reads nothing on screen.
 
 ## Building
@@ -137,7 +156,9 @@ Builds are signed with `app/debug.keystore`, a project-specific debug key commit
 
 ## Licenses
 
-The bundled wallpaper photos come from Wikimedia Commons: "Lycoris Radiata 2017 2" by Chihiro H (CC BY 3.0), "Red spider lily (Lycoris radiata)" by Offnfopt (public domain) and "Uyuni Salt Lake (Salar de Uyuni), Bolivia, 12-2022" by Abel Maestro Garcia (public domain). They are cropped and recolored; full credits and links are in `app/src/main/assets/photo_credits.txt` and in the app under Backup → Photo credits.
+The bundled wallpaper photos come from Wikimedia Commons: "Lycoris Radiata 2017 2" by Chihiro H (CC BY 3.0), "Red spider lily (Lycoris radiata)" by Offnfopt (public domain) and "Uyuni Salt Lake (Salar de Uyuni), Bolivia, 12-2022" by Abel Maestro Garcia (public domain). They are cropped and recolored; full credits and links are in `app/src/main/assets/photo_credits.txt` and in the app under Backup → Photo and weather credits.
 
+
+Weather data comes from [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
 
 The bundled fonts are under the SIL Open Font License 1.1; their full license texts are in `app/src/main/assets/font_licenses.txt` and shown in the app under Backup and about.

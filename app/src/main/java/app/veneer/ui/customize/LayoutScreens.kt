@@ -57,6 +57,9 @@ fun HomeLayoutScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> U
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { lockReady = LockService.isEnabled(context) }
 
     SettingsPage("Home screen", onBack, state, apps, section = Section.HomeLayout) {
+        item { SectionHeader("Weather") }
+        item { WeatherCard(state.weather) }
+
         item { SectionHeader("Grid") }
         item {
             SettingCard {

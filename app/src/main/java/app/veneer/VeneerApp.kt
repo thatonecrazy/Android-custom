@@ -8,6 +8,7 @@ import app.veneer.fonts.FontManager
 import app.veneer.icons.IconPackManager
 import app.veneer.icons.IconProvider
 import app.veneer.system.WallpaperShuffler
+import app.veneer.system.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,8 @@ class VeneerApp : Application() {
         private set
     lateinit var shuffler: WallpaperShuffler
         private set
+    lateinit var weather: WeatherRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -36,6 +39,7 @@ class VeneerApp : Application() {
         icons = IconProvider(this, IconPackManager(this))
         fonts = FontManager(this)
         shuffler = WallpaperShuffler(this, store, scope).also { it.start() }
+        weather = WeatherRepository(this, store)
         scope.launch {
             apps.packageChanges.collect { icons.onPackageChanged(it) }
         }

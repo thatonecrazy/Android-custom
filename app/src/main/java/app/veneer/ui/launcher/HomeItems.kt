@@ -124,7 +124,7 @@ fun HomeItemView(
             HostedWidget(content.appWidgetId, actions.widgetHost)
             ItemMenu(item, controller, actions, null)
         }
-        is ItemContent.Builtin -> ItemFrame(item, controller, modifier, onClick = builtinClick(content.kind, controller)) {
+        is ItemContent.Builtin -> ItemFrame(item, controller, modifier, onClick = builtinClick(content, controller, StyleTarget(item.id), actions)) {
             BuiltinWidgetView(content.kind, content.style)
             ItemMenu(item, controller, actions, null)
         }
@@ -136,13 +136,15 @@ fun HomeItemView(
 }
 
 @Composable
-private fun builtinClick(kind: BuiltinKind, controller: HomeController): (() -> Unit)? {
+private fun builtinClick(content: ItemContent.Builtin, controller: HomeController, target: StyleTarget, actions: LauncherActions): (() -> Unit)? {
     val context = LocalContext.current
-    return when (kind) {
-        BuiltinKind.Clock, BuiltinKind.ClockDate -> { { SystemActions.openAlarms(context) } }
-        BuiltinKind.Date, BuiltinKind.Agenda -> { { SystemActions.openCalendar(context) } }
+    return when (content.kind) {
+        BuiltinKind.Clock, BuiltinKind.ClockDate, BuiltinKind.AnalogClock, BuiltinKind.FlipClock -> { { SystemActions.openAlarms(context) } }
+        BuiltinKind.Date, BuiltinKind.Agenda, BuiltinKind.MonthCalendar -> { { SystemActions.openCalendar(context) } }
         BuiltinKind.Battery -> { { SystemActions.openBatterySettings(context) } }
         BuiltinKind.Search -> { { controller.openDrawer(focusSearch = true) } }
+        BuiltinKind.Weather, BuiltinKind.Glance -> { { actions.openCustomize("home") } }
+        BuiltinKind.Photo -> if (content.style.image == null) { { controller.photoTarget = target } } else null
         BuiltinKind.Greeting, BuiltinKind.Text, BuiltinKind.Media -> null
     }
 }
@@ -343,7 +345,7 @@ fun WidgetStack(item: HomeItem, stack: ItemContent.Stack, controller: HomeContro
             when (val child = stack.widgets.getOrNull(i)) {
                 is ItemContent.Widget -> HostedWidget(child.appWidgetId, actions.widgetHost)
                 is ItemContent.Builtin -> {
-                    val click = builtinClick(child.kind, controller)
+                    val click = builtinClick(child, controller, StyleTarget(item.id, i), actions)
                     BuiltinWidgetView(child.kind, child.style, if (click != null) Modifier.clickable(onClick = click) else Modifier)
                 }
                 else -> Spacer(Modifier.fillMaxSize())

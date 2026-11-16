@@ -21,3 +21,9 @@ Mirror sky
   https://commons.wikimedia.org/wiki/File:Uyuni_Salt_Lake_(Salar_de_Uyuni),_Bolivia,_12-2022.jpg
   License: public domain.
   Changes: cropped to portrait, sharpened, lavender tint.
+
+
+Weather
+-------
+Weather data by Open-Meteo.com, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+https://open-meteo.com

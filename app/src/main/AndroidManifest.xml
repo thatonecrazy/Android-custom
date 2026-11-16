@@ -11,6 +11,9 @@
     <!-- Swipe down on the home screen opens the notification shade. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Weather widgets: Open-Meteo over the internet, near your rough location (asked for only when used). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- The calendar agenda widget; asked for only when that widget is added. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 

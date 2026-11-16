@@ -167,7 +167,7 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                 }
             }
         }
-        item { NoteText("Free-to-use photos from Wikimedia Commons, recolored for Veneer. Credits are under Backup → Photo credits.") }
+        item { NoteText("Free-to-use photos from Wikimedia Commons, recolored for Veneer. Credits are under Backup → Photo and weather credits.") }
 
         item { SectionHeader("Your pictures on shuffle") }
         item {
@@ -397,9 +397,9 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
                         }
                     }
                 }
-                ClickRow("Photo credits", "Who took the bundled wallpaper photos, and their licenses", icon = Icons.Filled.Image) {
+                ClickRow("Photo and weather credits", "Who took the bundled wallpaper photos, and where the weather comes from", icon = Icons.Filled.Image) {
                     scope.launch {
-                        licensesTitle = "Photo credits"
+                        licensesTitle = "Photo and weather credits"
                         licenses = withContext(Dispatchers.IO) {
                             runCatching { context.assets.open("photo_credits.txt").use { it.readBytes().decodeToString() } }.getOrNull()
                         }

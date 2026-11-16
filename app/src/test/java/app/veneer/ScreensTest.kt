@@ -36,13 +36,17 @@ import app.veneer.data.IconStyle
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.data.LayoutOps.Spot
+import app.veneer.data.Layouts
 import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
+import app.veneer.data.WeatherSettings
 import app.veneer.icons.IconRenderer
 import app.veneer.icons.IconSource
 import app.veneer.icons.iconSpec
 import app.veneer.system.PhotoWallpapers
+import app.veneer.system.WeatherNow
+import app.veneer.system.WidgetPhotos
 import app.veneer.system.Wallpapers
 import app.veneer.ui.common.GlowBus
 import app.veneer.ui.customize.withLookOf
@@ -184,6 +188,7 @@ class ScreensTest {
             compose.onNodeWithText("Widgets").performClick()
             compose.waitForIdle()
             compose.onNodeWithText("Veneer widgets").assertExists()
+            compose.onNodeWithText("Ready-made layouts").assertExists()
             shot("widget-picker", null)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitForIdle()
@@ -319,6 +324,68 @@ class ScreensTest {
             compose.waitForIdle()
             assertEquals("orbitron", app.store.current.theme.fontId)
             assertEquals(IconShape.Hexagon, app.store.current.theme.iconShape)
+        }
+    }
+
+    @Test
+    fun readyMadeLayoutGoesOnANewPage() {
+        launchHome().use {
+            val pagesBefore = app.store.current.pageCount
+            val itemsBefore = app.store.current.items
+            compose.onAllNodes(isRoot()).onFirst().performTouchInput { longClick(Offset(centerX, height * 0.38f)) }
+            compose.waitForIdle()
+            compose.onNodeWithText("Widgets").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Hero photo").performClick()
+            compose.onNodeWithText("Use \"Hero photo\"?").assertExists()
+            compose.onNodeWithText("Add as a new page").performClick()
+            compose.waitForIdle()
+            val state = app.store.current
+            assertEquals(pagesBefore + 1, state.pageCount)
+            assertTrue("nothing already there moves", itemsBefore.all { it in state.items })
+            val added = state.items.filter { it.page == pagesBefore }
+            assertEquals(Layouts.all.first { it.name == "Hero photo" }.items.map { it.content.kind }, added.map { (it.content as ItemContent.Builtin).kind })
+        }
+    }
+
+    /** Each ready-made layout on its own home screen, in a theme that suits it. */
+    @Test
+    fun readyMadeLayoutsRender() {
+        // A real photo for the photo widgets: one of the bundled wallpapers.
+        val file = File(app.cacheDir, "widget-photo.jpg")
+        Wallpapers.render(WallpaperSpec(photo = "mirror_sky"), 900, 1200, app).let { bmp ->
+            file.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        }
+        val photo = kotlinx.coroutines.runBlocking { WidgetPhotos.save(app, android.net.Uri.fromFile(file)) }
+        assertNotNull(photo)
+        app.store.update { it.copy(weather = WeatherSettings(useDeviceLocation = false, fahrenheit = false)) }
+        app.weather.setForPreview(WeatherNow(18, 21, 12, 2, true, false, "Lisbon", System.currentTimeMillis()))
+
+        val looks = mapOf(
+            "Hero photo" to "Default",
+            "Big clock" to "Sunset",
+            "Glass" to "Glass",
+            "At a glance" to "Ocean",
+            "Hello" to "Ghoul",
+            "Classic" to "Paper",
+        )
+        assertEquals(Layouts.all.map { it.name }.toSet(), looks.keys)
+        launchHome().use {
+            for (template in Layouts.all) {
+                val preset = Presets.all.first { it.name == looks.getValue(template.name) }
+                val withPhoto = template.copy(items = template.items.map { p ->
+                    if (p.content.kind == BuiltinKind.Photo) p.copy(content = p.content.copy(style = p.content.style.copy(image = photo))) else p
+                })
+                app.store.update { s ->
+                    val dockOnly = s.copy(items = s.items.filter { it.page == DOCK_PAGE }, pageCount = 0, theme = s.theme.withLookOf(preset))
+                    LayoutOps.applyTemplate(dockOnly, withPhoto, asFirstPage = false).first
+                }
+                compose.waitForIdle()
+                // Photos load in the background.
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("Tap to pick a photo").fetchSemanticsNodes().isEmpty() }
+                assertEquals(template.items.size, app.store.current.items.count { it.page == 0 })
+                shot("layout-${template.name.lowercase().replace(' ', '-')}", preset.wallpaper)
+            }
         }
     }
 

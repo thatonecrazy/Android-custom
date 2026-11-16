@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import app.veneer.data.BuiltinKind
 import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
+import app.veneer.data.PhotoShape
 import app.veneer.data.LayoutOps
 import app.veneer.data.WidgetAlign
 import app.veneer.data.WallpaperSpec
@@ -201,6 +202,40 @@ fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
                 WallpaperPreview(state.theme.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
                 BuiltinWidgetView(content.kind, style)
             }
+            if (content.kind == BuiltinKind.Photo) {
+                SectionHeader("Photo")
+                ClickRow(if (style.image == null) "Pick a photo" else "Change photo") {
+                    controller.editingStyle = null
+                    controller.photoTarget = target
+                }
+                ChoiceRow("Frame", PhotoShape.entries, style.photoShape, { it.label }) { v -> update { it.copy(photoShape = v) } }
+                SwitchRow("Black and white", style.monochrome) { b -> update { it.copy(monochrome = b) } }
+                SwitchRow("Thin outline", style.border) { b -> update { it.copy(border = b) } }
+                IntSliderRow("Corner roundness", style.cornerDp, 0..48, { "$it dp" }) { v -> update { it.copy(cornerDp = v) } }
+            }
+            if (content.kind == BuiltinKind.Battery) {
+                SectionHeader("Look")
+                ChoiceRow(null, listOf(0, 1), style.variant, { if (it == 0) "Dots" else "Ring" }) { v -> update { it.copy(variant = v) } }
+            }
+            SectionHeader("Card")
+            val cards = listOf("None", "Glass", "Dark", "Accent")
+            val currentCard = when {
+                style.border && style.background == 0x26FFFFFF -> "Glass"
+                style.background == 0xB3000000.toInt() -> "Dark"
+                style.background != null && style.background == (state.theme.accent and 0x00FFFFFF or 0x59000000) -> "Accent"
+                style.background == 0 -> "None"
+                else -> ""
+            }
+            ChoiceRow(null, cards, currentCard, { it }) { card ->
+                update {
+                    when (card) {
+                        "Glass" -> it.copy(background = 0x26FFFFFF, border = true)
+                        "Dark" -> it.copy(background = 0xB3000000.toInt(), border = false)
+                        "Accent" -> it.copy(background = state.theme.accent and 0x00FFFFFF or 0x59000000, border = false)
+                        else -> it.copy(background = 0, border = false)
+                    }
+                }
+            }
             SectionHeader("Font")
             FontStrip(selected = style.fontId, themeOption = true) { id -> update { it.copy(fontId = id) } }
             IntSliderRow("Size", style.sizeSp, 10..160, { "$it sp" }) { v -> update { it.copy(sizeSp = v) } }
@@ -216,7 +251,7 @@ fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
             SwitchRow("Shadow", style.shadow ?: theme.labelShadow) { b -> update { it.copy(shadow = b) } }
             SwitchRow("All caps", style.uppercase) { b -> update { it.copy(uppercase = b) } }
 
-            if (content.kind == BuiltinKind.Clock || content.kind == BuiltinKind.ClockDate) {
+            if (content.kind in setOf(BuiltinKind.Clock, BuiltinKind.ClockDate, BuiltinKind.FlipClock, BuiltinKind.AnalogClock)) {
                 SectionHeader("Time")
                 val formats = listOf<Boolean?>(null, false, true)
                 ChoiceRow(null, formats, style.use24h, { when (it) { null -> "Phone setting"; false -> "12-hour"; true -> "24-hour" } }) { f ->

@@ -96,7 +96,7 @@ enum class Section(val id: String, val title: String, val subtitle: String, val 
     Themes("themes", "Themes", "One-tap looks", Icons.Filled.Palette, listOf(Vivid.Pink, Vivid.Violet)),
     IconsSection("icons", "Icons", "Shapes, packs, styles", Icons.Filled.Category, listOf(Vivid.Orange, Vivid.Coral)),
     Fonts("fonts", "Fonts", "13 fonts, or your own", Icons.Filled.TextFields, listOf(Vivid.Teal, Vivid.Sky)),
-    HomeLayout("home", "Home screen", "Grid, dock, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
+    HomeLayout("home", "Home screen", "Weather, grid, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
     Drawer("drawer", "App list", "Columns and colors", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
     Wallpaper("wallpaper", "Wallpaper", "Gradients, system colors", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
     Apps("apps", "Single apps", "Rename, re-icon, hide", Icons.Filled.Brush, listOf(Vivid.Amber, Vivid.Orange)),

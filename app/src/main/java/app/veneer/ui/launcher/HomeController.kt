@@ -22,7 +22,9 @@ import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
 import app.veneer.data.LayoutOps
+import app.veneer.data.LayoutTemplate
 import app.veneer.data.WidgetAlign
+import app.veneer.data.WidgetDefaults
 import app.veneer.data.WidgetStyle
 import app.veneer.system.LockService
 import app.veneer.system.SystemActions
@@ -63,6 +65,9 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
 
     /** When set, the widget picker adds to this stack instead of the home screen. */
     var stackTargetId by mutableStateOf<Long?>(null)
+
+    /** A photo widget waiting for the user to pick its picture. */
+    var photoTarget by mutableStateOf<StyleTarget?>(null)
 
     /** The widget showing in each stack, by item id. */
     val stackPages = mutableStateMapOf<Long, Int>()
@@ -204,6 +209,20 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
         store.update { LayoutOps.remove(it, id) }
     }
 
+    /** Changes the style of one of Veneer's widgets, on its own or inside a stack. */
+    fun updateBuiltinStyle(target: StyleTarget, transform: (WidgetStyle) -> WidgetStyle) = store.update { s ->
+        val item = s.items.firstOrNull { it.id == target.itemId } ?: return@update s
+        when (val c = item.content) {
+            is ItemContent.Builtin -> LayoutOps.updateContent(s, item.id, c.copy(style = transform(c.style)))
+            is ItemContent.Stack -> {
+                val index = target.stackIndex ?: return@update s
+                val child = c.widgets.getOrNull(index) as? ItemContent.Builtin ?: return@update s
+                LayoutOps.updateStackChild(s, item.id, index, child.copy(style = transform(child.style)))
+            }
+            else -> s
+        }
+    }
+
     fun removeFromStack(itemId: Long, index: Int, onWidgetRemoved: (Int) -> Unit) {
         var removed: ItemContent? = null
         store.update { s -> LayoutOps.removeFromStack(s, itemId, index).also { removed = it.second }.first }
@@ -240,6 +259,13 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
                 if (key != null) actions.launch(key) else actions.openCustomize("home")
             }
         }
+    }
+
+    /** Puts a ready-made layout on a page of its own and shows it. */
+    fun applyLayout(template: LayoutTemplate, asFirstPage: Boolean) {
+        var page = 0
+        store.update { val (next, p) = LayoutOps.applyTemplate(it, template, asFirstPage); page = p; next }
+        _scrollToPage.tryEmit(page)
     }
 
     fun addPage() {
@@ -303,17 +329,7 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
     }
 
     companion object {
-        fun defaultStyle(kind: BuiltinKind): WidgetStyle = when (kind) {
-            BuiltinKind.Clock -> WidgetStyle(sizeSp = 84)
-            BuiltinKind.ClockDate -> WidgetStyle(sizeSp = 72)
-            BuiltinKind.Date -> WidgetStyle(sizeSp = 24)
-            BuiltinKind.Greeting -> WidgetStyle(sizeSp = 28, align = WidgetAlign.Start)
-            BuiltinKind.Text -> WidgetStyle(sizeSp = 22, text = "Make it yours.")
-            BuiltinKind.Search -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false)
-            BuiltinKind.Battery -> WidgetStyle(sizeSp = 28)
-            BuiltinKind.Media -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false, align = WidgetAlign.Start)
-            BuiltinKind.Agenda -> WidgetStyle(sizeSp = 16, cornerDp = 28, shadow = false, align = WidgetAlign.Start)
-        }
+        fun defaultStyle(kind: BuiltinKind): WidgetStyle = WidgetDefaults.style(kind)
 
         /** Every hosted widget id inside an item, so they can be released when it goes away. */
         fun widgetIds(content: ItemContent): List<Int> = when (content) {

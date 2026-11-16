@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -48,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,7 +109,14 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
             )
-            LazyColumn(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize().testTag("widgetList")) {
+                if (!stacking && query.isBlank()) item {
+                    SectionTitle("Ready-made layouts", "Popular setups people share online. Each one fills a new page.")
+                    LayoutTemplatesRow(theme) { template, first ->
+                        controller.applyLayout(template, first)
+                        close()
+                    }
+                }
                 item {
                     SectionTitle("Veneer widgets", "Fully styleable: pick any font, size and color after adding.")
                     LazyRow(
@@ -192,7 +201,10 @@ private fun BuiltinCard(kind: BuiltinKind, theme: ThemeConfig, onClick: () -> Un
                 .clip(RoundedCornerShape(14.dp)),
         ) {
             WallpaperPreview(theme.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
-            BuiltinWidgetView(kind, HomeController.defaultStyle(kind))
+            CompositionLocalProvider(LocalWidgetPreview provides true) {
+                BuiltinWidgetView(kind, HomeController.defaultStyle(kind))
+            }
+            Box(Modifier.matchParentSize().clickable(onClick = onClick))
         }
         Spacer(Modifier.height(8.dp))
         Text(kind.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1)

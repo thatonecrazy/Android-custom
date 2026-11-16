@@ -7,11 +7,13 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -151,17 +153,26 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
     )
     fun String.cased() = if (style.uppercase) uppercase(Locale.getDefault()) else this
 
+    if (kind == BuiltinKind.Photo) {
+        PhotoWidget(style, textColor, modifier)
+        return
+    }
     val hasBackground = (background ushr 24) != 0
-    // The card hugs its content, centered in the cell, so a one-row search bar doesn't balloon.
+    // Widgets that draw a shape fill their cell; text widgets hug their content so a one-row search bar doesn't balloon.
+    val fills = kind == BuiltinKind.AnalogClock || kind == BuiltinKind.MonthCalendar || kind == BuiltinKind.FlipClock ||
+        (kind == BuiltinKind.Battery && style.variant == 1) || (kind == BuiltinKind.Weather && hasBackground)
+    val cardShape = RoundedCornerShape(style.cornerDp.dp)
     Box(modifier.fillMaxSize().padding(4.dp), contentAlignment = Alignment.Center) {
     Box(
         Modifier
             .fillMaxWidth()
+            .then(if (fills) Modifier.fillMaxHeight() else Modifier)
             .then(
                 if (hasBackground) {
-                    Modifier.clip(RoundedCornerShape(style.cornerDp.dp)).background(Color(background))
+                    Modifier.clip(cardShape).background(Color(background))
                 } else Modifier,
             )
+            .then(if (style.border) Modifier.border(1.dp, Color.White.copy(alpha = 0.35f), cardShape) else Modifier)
             .padding(horizontal = if (hasBackground) 18.dp else 8.dp, vertical = if (hasBackground) 14.dp else 4.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -213,7 +224,7 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
             BuiltinKind.Battery -> {
                 val battery by rememberBattery()
                 val text = "${battery.percent}%" + if (battery.charging) " ⚡" else ""
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = horizontal) {
+                if (style.variant == 1) BatteryRing(battery.percent, battery.charging, base, style.sizeSp, textColor) else Column(Modifier.fillMaxWidth(), horizontalAlignment = horizontal) {
                     FittedText(text, base, style.sizeSp, Modifier.fillMaxWidth())
                     Spacer(Modifier.height(6.dp))
                     // Ten dots that fill up with the charge, in the accent color.
@@ -232,6 +243,12 @@ fun BuiltinWidgetView(kind: BuiltinKind, style: WidgetStyle, modifier: Modifier 
             }
             BuiltinKind.Media -> MusicWidget(base, style.sizeSp, textColor)
             BuiltinKind.Agenda -> AgendaWidget(base, style.sizeSp, textColor)
+            BuiltinKind.Weather -> WeatherWidget(base, style.sizeSp, textColor)
+            BuiltinKind.Glance -> GlanceWidget(base, style.sizeSp, textColor)
+            BuiltinKind.MonthCalendar -> MonthCalendarWidget(base, textColor)
+            BuiltinKind.AnalogClock -> AnalogClockWidget(style, textColor)
+            BuiltinKind.FlipClock -> FlipClockWidget(style, base, textColor)
+            BuiltinKind.Photo -> Unit
         }
     }
     }

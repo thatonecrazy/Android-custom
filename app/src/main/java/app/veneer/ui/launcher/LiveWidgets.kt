@@ -179,8 +179,9 @@ private fun rememberNowPlaying(allowed: Boolean): State<NowPlaying?> {
 @Composable
 fun MusicWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
     val context = LocalContext.current
-    val allowed by rememberNotificationAccess()
-    val now by rememberNowPlaying(allowed)
+    val preview = LocalWidgetPreview.current
+    val allowed = rememberNotificationAccess().value || preview
+    val now by rememberNowPlaying(allowed && !preview)
     val playing = now
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
@@ -203,6 +204,7 @@ fun MusicWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
         ) {
             val title = when {
                 !allowed -> "Tap to show what's playing"
+                preview && playing == null -> "Late Night Drive"
                 playing == null -> "Nothing playing"
                 else -> playing.title
             }
@@ -214,6 +216,7 @@ fun MusicWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
             )
             val subtitle = when {
                 !allowed -> "Needs notification access"
+                preview && playing == null -> "Your music shows here"
                 playing == null -> "Start music in any app"
                 else -> playing.artist
             }
@@ -234,6 +237,10 @@ fun MusicWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
                 modifier = Modifier.clip(CircleShape).background(textColor.copy(alpha = 0.18f)),
             ) { Icon(if (playing.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play or pause", tint = textColor) }
             IconButton(onClick = { controls.skipToNext() }) { Icon(Icons.Filled.SkipNext, "Next", tint = textColor) }
+        } else if (preview) {
+            Box(Modifier.size(40.dp).clip(CircleShape).background(textColor.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = textColor)
+            }
         }
     }
 }
@@ -242,7 +249,7 @@ fun MusicWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
 
 data class AgendaEvent(val id: Long, val title: String, val begin: Long, val allDay: Boolean, val color: Int)
 
-private fun loadEvents(context: Context, limit: Int = 8): List<AgendaEvent> {
+internal fun nextEvents(context: Context, limit: Int = 8): List<AgendaEvent> {
     val now = System.currentTimeMillis()
     val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
         ContentUris.appendId(it, now - 12 * 60 * 60 * 1000L)
@@ -274,6 +281,17 @@ private fun loadEvents(context: Context, limit: Int = 8): List<AgendaEvent> {
     return events
 }
 
+/** Made-up events for widget previews, so a layout shows what it will look like with a full calendar. */
+private fun sampleEvents(now: Long): List<AgendaEvent> {
+    val hour = 60 * 60 * 1000L
+    val start = now - now % hour
+    return listOf(
+        AgendaEvent(-1, "Coffee with Sam", start + 2 * hour, false, 0xFFFFB74D.toInt()),
+        AgendaEvent(-2, "Gym", start + 5 * hour, false, 0xFF4DD0E1.toInt()),
+        AgendaEvent(-3, "Movie night", start + 26 * hour, false, 0xFFBA68C8.toInt()),
+    )
+}
+
 private fun timeLabel(context: Context, e: AgendaEvent): String {
     val today = Calendar.getInstance()
     val day = Calendar.getInstance().apply { timeInMillis = e.begin }
@@ -293,12 +311,17 @@ private fun timeLabel(context: Context, e: AgendaEvent): String {
 fun AgendaWidget(base: TextStyle, sizeSp: Int, textColor: Color) {
     val context = LocalContext.current
     fun check() = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
-    var granted by remember { mutableStateOf(check()) }
+    val preview = LocalWidgetPreview.current
+    var granted by remember { mutableStateOf(preview || check()) }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { granted = check() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { granted = preview || check() }
     val now by rememberNow(false)
     val events by produceState(emptyList<AgendaEvent>(), granted, now / (5 * 60_000L)) {
-        if (granted) value = withContext(Dispatchers.IO) { loadEvents(context) }
+        value = when {
+            preview -> sampleEvents(now)
+            granted -> withContext(Dispatchers.IO) { nextEvents(context) }
+            else -> emptyList()
+        }
     }
     val small = base.copy(fontSize = (sizeSp * 0.85f).sp, textAlign = TextAlign.Start)
     val locale = LocalConfiguration.current.locales[0]

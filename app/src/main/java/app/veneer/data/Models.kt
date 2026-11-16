@@ -170,7 +170,33 @@ enum class BuiltinKind(val label: String, val defaultSpanX: Int, val defaultSpan
     Battery("Battery", 2, 1),
     Media("Music", 4, 1),
     Agenda("Calendar agenda", 4, 2),
+    Photo("Photo", 4, 2),
+    Weather("Weather", 2, 1),
+    MonthCalendar("Month calendar", 2, 2),
+    AnalogClock("Analog clock", 2, 2),
+    FlipClock("Flip clock", 4, 2),
+    Glance("At a glance", 4, 1),
 }
+
+/** The frame of a photo widget. */
+@Serializable
+enum class PhotoShape(val label: String) {
+    Rounded("Rounded"),
+    Pill("Pill"),
+    Circle("Circle"),
+    Square("Square"),
+}
+
+/** Where the weather comes from: the phone's rough location, or a place picked by name. */
+@Serializable
+data class WeatherSettings(
+    val useDeviceLocation: Boolean = true,
+    val place: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    /** Null picks by country: Fahrenheit in the US, Celsius elsewhere. */
+    val fahrenheit: Boolean? = null,
+)
 
 @Serializable
 enum class WidgetAlign { Start, Center, End }
@@ -195,6 +221,15 @@ data class WidgetStyle(
     /** Null follows the theme's label shadow setting. */
     val shadow: Boolean? = null,
     val uppercase: Boolean = false,
+    /** A thin light outline around the card: with a see-through background this is the "glass" look. */
+    val border: Boolean = false,
+    /** The picture in a photo widget, stored in the app's private storage. */
+    val image: String? = null,
+    val photoShape: PhotoShape = PhotoShape.Rounded,
+    /** Black-and-white photo. */
+    val monochrome: Boolean = false,
+    /** A widget-specific look, e.g. the battery as dots (0) or a ring (1). */
+    val variant: Int = 0,
 )
 
 @Serializable
@@ -272,4 +307,5 @@ data class LauncherState(
     val nextId: Long = 1,
     val firstRunDone: Boolean = false,
     val shuffle: WallpaperShuffle = WallpaperShuffle(),
+    val weather: WeatherSettings = WeatherSettings(),
 )
