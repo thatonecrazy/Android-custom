@@ -2,13 +2,17 @@
 
 A home-screen app for Android that lets you restyle what you see every day: every app icon, the fonts, the widgets, the app list, the wallpaper and the system colors that follow it.
 
-| Default | Neon | Paper |
-| --- | --- | --- |
-| ![Default look](docs/screenshots/home-default.png) | ![Neon preset](docs/screenshots/home-neon.png) | ![Paper preset](docs/screenshots/home-paper.png) |
+![All nine themes](docs/themes.png)
 
-| Terminal | App list | Customize |
+![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
+
+| App list | Edit one app | Widgets |
 | --- | --- | --- |
-| ![Terminal preset](docs/screenshots/home-terminal.png) | ![App list](docs/screenshots/drawer.png) | ![Customize](docs/screenshots/customize.png) |
+| ![App list](docs/screenshots/drawer.png) | ![Edit an app](docs/screenshots/edit-app.png) | ![Widget picker](docs/screenshots/widget-picker.png) |
+
+| Customize | Icons | Fonts |
+| --- | --- | --- |
+| ![Customize](docs/screenshots/customize.png) | ![Icon settings](docs/screenshots/customize-icons.png) | ![Font settings](docs/screenshots/customize-fonts.png) |
 
 The screenshots are produced by the test suite (see [Building](#building)), with sample apps and a generated wallpaper.
 

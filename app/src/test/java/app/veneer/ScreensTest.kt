@@ -133,13 +133,13 @@ class ScreensTest {
     @Test
     fun presetsRestyleTheHomeScreen() {
         launchHome().use {
-            for (name in listOf("Neon", "Paper", "Terminal", "Playful", "Elegant", "Leaf")) {
+            for (name in Presets.all.drop(1).map { it.name }) {
                 val preset = Presets.all.first { it.name == name }
                 app.store.updateTheme { it.withLookOf(preset) }
                 compose.waitForIdle()
                 assertEquals(preset.fontId, app.store.current.theme.fontId)
                 assertEquals(4, app.store.current.theme.gridColumns)
-                shot("home-${name.lowercase()}", preset.wallpaper)
+                shot("home-${name.lowercase().replace(' ', '-')}", preset.wallpaper)
             }
         }
     }
@@ -169,6 +169,27 @@ class ScreensTest {
             compose.waitForIdle()
             val mapsId = appContent("Maps")
             assertNull(app.store.current.items.firstOrNull { it.content == mapsId })
+        }
+    }
+
+    @Test
+    fun widgetPickerAndAppEditorOpen() {
+        launchHome().use { scenario ->
+            // Hold an empty spot (row 2, between the clock and the apps).
+            compose.onAllNodes(isRoot()).onFirst().performTouchInput { longClick(Offset(centerX, height * 0.38f)) }
+            compose.waitForIdle()
+            compose.onNodeWithText("Widgets").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Veneer widgets").assertExists()
+            shot("widget-picker", null)
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            compose.waitForIdle()
+
+            compose.onNodeWithText("Maps").performTouchInput { longClick() }
+            compose.onNodeWithText("Edit icon and name").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Edit app").assertExists()
+            shot("edit-app", null)
         }
     }
 
@@ -211,6 +232,11 @@ class ScreensTest {
             shot("customize-fonts", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
+            compose.onNodeWithText("Wallpaper and system colors").performClick()
+            compose.onNodeWithText("Make a gradient").assertExists()
+            shot("customize-wallpaper", wallpaper)
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+
             compose.onNodeWithText("Themes").performClick()
             compose.onNodeWithText("Ready-made looks").assertExists()
             shot("customize-themes", wallpaper)
@@ -242,5 +268,33 @@ class ScreensTest {
             }
         }
         assertNotNull(IconRenderer.render(TestApps.GlyphDrawable("A", Color.BLACK), IconSource.App, size, ThemeConfig().iconSpec()))
+
+        // A sheet of every shape (columns) in every style (rows), saved next to the screenshots.
+        val dir = System.getProperty("screenshots.dir") ?: return
+        val cell = 180
+        val labelW = 200
+        val shapes = IconShape.entries
+        val styles = IconStyle.entries
+        val sheet = createBitmap(labelW + cell * shapes.size, 70 + cell * styles.size)
+        val canvas = Canvas(sheet)
+        canvas.drawBitmap(Wallpapers.render(WallpaperSpec(), sheet.width, sheet.height), 0f, 0f, null)
+        val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = 26f
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+        shapes.forEachIndexed { c, shape -> canvas.drawText(shape.label, labelW + c * cell + cell / 2f, 46f, text) }
+        text.textAlign = android.graphics.Paint.Align.LEFT
+        styles.forEachIndexed { r, style ->
+            canvas.drawText(style.label, 24f, 70 + r * cell + cell / 2f + 10, text)
+            shapes.forEachIndexed { c, shape ->
+                val sample = TestApps.samples[(c + r * 3) % TestApps.samples.size]
+                val spec = ThemeConfig(iconShape = shape, iconStyle = style).iconSpec()
+                val icon = IconRenderer.render(TestApps.icon(sample.label), IconSource.App, size, spec)
+                canvas.drawBitmap(icon, labelW + c * cell + (cell - size) / 2f, 70 + r * cell + (cell - size) / 2f, null)
+            }
+        }
+        File(dir).mkdirs()
+        File(dir, "icon-shapes.png").outputStream().use { sheet.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 }

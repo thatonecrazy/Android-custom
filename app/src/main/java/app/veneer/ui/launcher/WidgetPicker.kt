@@ -129,7 +129,12 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
                             .takeIf { it.isNotEmpty() }?.let { g.copy(widgets = it) }
                     }
                     if (filtered.isEmpty()) {
-                        item { SectionTitle("No widgets found", null) }
+                        item {
+                            SectionTitle(
+                                if (query.isBlank()) "Your other apps don't offer widgets" else "No widgets match \"$query\"",
+                                null,
+                            )
+                        }
                     }
                     filtered.forEach { group ->
                         item(key = group.packageName) {
