@@ -24,7 +24,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.performScrollTo
 import androidx.core.graphics.createBitmap
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -36,10 +38,11 @@ import app.veneer.data.IconStyle
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.data.LayoutOps.Spot
-import app.veneer.data.Layouts
-import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
+import app.veneer.data.WallpaperStyle
+import app.veneer.data.WidgetStyle
+import app.veneer.data.forApp
 import app.veneer.data.WeatherSettings
 import app.veneer.icons.IconRenderer
 import app.veneer.icons.IconSource
@@ -49,7 +52,6 @@ import app.veneer.system.WeatherNow
 import app.veneer.system.WidgetPhotos
 import app.veneer.system.Wallpapers
 import app.veneer.ui.common.GlowBus
-import app.veneer.ui.customize.withLookOf
 import app.veneer.ui.launcher.HomeController
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -72,6 +74,9 @@ class ScreensTest {
     val compose = createEmptyComposeRule()
 
     private lateinit var app: VeneerApp
+
+    /** A wallpaper drawn behind screenshots, standing in for whatever picture the phone has. */
+    private val backdrop = WallpaperSpec(WallpaperStyle.Aurora, 0xFF6C4BFF.toInt(), 0xFFFF4D9A.toInt(), 0xFF1FC8FF.toInt())
 
     @Before
     fun setUp() {
@@ -123,6 +128,15 @@ class ScreensTest {
         File(dir, "$name.png").outputStream().use { out.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
+    /** Icons are drawn in the background; give them time to arrive before a screenshot. */
+    private fun settle() {
+        repeat(6) {
+            compose.waitForIdle()
+            Thread.sleep(80)
+        }
+        compose.waitForIdle()
+    }
+
     private fun launchHome(): ActivityScenario<MainActivity> = ActivityScenario.launch(MainActivity::class.java).also {
         compose.waitForIdle()
     }
@@ -133,21 +147,43 @@ class ScreensTest {
             compose.onNodeWithText("Search apps").assertExists()
             compose.onNodeWithText("Calendar").assertExists()
             compose.onNodeWithText("Files").assertExists()
-            shot("home-default", Presets.all.first().wallpaper)
+            shot("home-default", backdrop)
         }
     }
 
+    /** Builds a look one setting at a time, the way someone would in Customize, with a screenshot after each step. */
     @Test
-    fun presetsRestyleTheHomeScreen() {
+    fun buildingALookStepByStep() {
         launchHome().use {
-            for (name in Presets.all.drop(1).map { it.name }) {
-                val preset = Presets.all.first { it.name == name }
-                app.store.updateTheme { it.withLookOf(preset) }
-                compose.waitForIdle()
-                assertEquals(preset.fontId, app.store.current.theme.fontId)
-                assertEquals(4, app.store.current.theme.gridColumns)
-                shot("home-${name.lowercase().replace(' ', '-')}", preset.wallpaper)
-            }
+            app.store.updateTheme { it.copy(iconShape = IconShape.Teardrop) }
+            settle()
+            shot("step-1-shape", backdrop)
+
+            app.store.updateTheme { it.copy(iconStyle = IconStyle.Themed, themedBg = 0xFFFFE3EE.toInt(), themedFg = 0xFFD6336C.toInt()) }
+            settle()
+            shot("step-2-icon-colors", backdrop)
+
+            app.store.updateTheme { it.copy(fontId = "quicksand", labelBold = true) }
+            settle()
+            shot("step-3-font", backdrop)
+
+            app.store.updateTheme { it.copy(dockBg = 0x66FFFFFF, labelColor = 0xFFFFF3F8.toInt(), accent = 0xFFFF4D9A.toInt()) }
+            settle()
+            shot("step-4-colors", backdrop)
+
+            // Single apps with their own look.
+            val maps = app.apps.apps.value.first { it.label == "Maps" }.key.id
+            val music = app.apps.apps.value.first { it.label == "Music" }.key.id
+            app.store.updateOverride(maps) { it.copy(iconBg = 0xFF2F9E44.toInt(), iconFg = 0xFFFFFFFF.toInt(), shape = IconShape.Circle) }
+            app.store.updateOverride(music) { it.copy(style = IconStyle.Original, labelColor = 0xFFFFD43B.toInt()) }
+            settle()
+            shot("step-5-single-apps", backdrop)
+
+            val theme = app.store.current.theme
+            assertEquals("quicksand", theme.fontId)
+            assertEquals(IconShape.Circle, theme.forApp(app.store.current.overrides[maps]).iconShape)
+            assertEquals(IconShape.Teardrop, theme.forApp(app.store.current.overrides[music]).iconShape)
+            assertEquals(IconStyle.Original, theme.forApp(app.store.current.overrides[music]).iconStyle)
         }
     }
 
@@ -157,7 +193,7 @@ class ScreensTest {
             compose.onAllNodes(isRoot()).onFirst().performTouchInput { swipeUp(startY = bottom * 0.6f, endY = bottom * 0.2f) }
             compose.waitForIdle()
             compose.onNodeWithText("Search ${TestApps.samples.size} apps").assertExists()
-            shot("drawer", Presets.all.first().wallpaper)
+            shot("drawer", backdrop)
             compose.onNode(hasSetTextAction()).performTextInput("ma")
             compose.waitForIdle()
             // The home screen stays composed behind the drawer, so its copies count too.
@@ -188,7 +224,7 @@ class ScreensTest {
             compose.onNodeWithText("Widgets").performClick()
             compose.waitForIdle()
             compose.onNodeWithText("Veneer widgets").assertExists()
-            compose.onNodeWithText("Ready-made layouts").assertExists()
+            compose.onAllNodesWithText("Ready-made layouts").assertCountEquals(0)
             shot("widget-picker", null)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
             compose.waitForIdle()
@@ -217,7 +253,7 @@ class ScreensTest {
             compose.onNodeWithText("Folder").performClick()
             compose.waitForIdle()
             compose.onNodeWithText("Hold an app for more. Drop apps on this folder to add them.").assertExists()
-            shot("folder", Presets.all.first().wallpaper)
+            shot("folder", backdrop)
         }
     }
 
@@ -232,7 +268,7 @@ class ScreensTest {
         }
         launchHome().use {
             compose.onNodeWithText("Tap to show what's playing").assertExists()
-            shot("widgets", Presets.all.first().wallpaper)
+            shot("widgets", backdrop)
         }
     }
 
@@ -244,27 +280,39 @@ class ScreensTest {
             compose.onNode(hasSetTextAction()).performTextInput("12*3+4")
             compose.waitForIdle()
             compose.onNodeWithText("= 40").assertExists()
-            shot("drawer-calculator", Presets.all.first().wallpaper)
+            shot("drawer-calculator", backdrop)
         }
     }
 
     @Test
-    fun ghoulThemeGlowsOnUnlock() {
-        val ghoul = Presets.all.first { it.name == "Ghoul" }
+    fun edgeGlowOnUnlock() {
+        val wallpaper = WallpaperSpec(WallpaperStyle.Tendrils, 0xFFB80E1B.toInt(), 0xFF3A0509.toInt(), 0xFFFF2233.toInt(), photo = "higanbana")
         app.store.update { s ->
             val clock = s.items.first { (it.content as? ItemContent.Builtin)?.kind == BuiltinKind.ClockDate }
             val c = clock.content as ItemContent.Builtin
             var next = LayoutOps.updateContent(s, clock.id, c.copy(style = c.style.copy(text = "HELLO!")))
             next = LayoutOps.addAt(next, ItemContent.Builtin(BuiltinKind.Battery, HomeController.defaultStyle(BuiltinKind.Battery)), Spot(1, 0, 0), 2, 1)
-            next.copy(theme = next.theme.withLookOf(ghoul))
+            next.copy(
+                theme = next.theme.copy(
+                    iconShape = IconShape.RoundedSquare,
+                    iconStyle = IconStyle.Themed,
+                    themedFg = 0xFFFF2A3A.toInt(),
+                    themedBg = 0xFF150708.toInt(),
+                    fontId = "bebas",
+                    dockBg = 0xB30C0304.toInt(),
+                    accent = 0xFFE3192B.toInt(),
+                    edgeGlow = true,
+                    edgeGlowColor = 0xFFFF1F33.toInt(),
+                ),
+            )
         }
         launchHome().use {
             compose.onNodeWithText("HELLO!").assertExists()
-            shot("home-ghoul-hello", ghoul.wallpaper)
+            shot("home-red", wallpaper)
             compose.mainClock.autoAdvance = false
-            GlowBus.fire(ghoul.edgeGlowColor!!)
+            GlowBus.fire(app.store.current.theme.edgeGlowColor!!)
             compose.mainClock.advanceTimeBy(1100)
-            shot("home-ghoul-glow", ghoul.wallpaper)
+            shot("home-red-glow", wallpaper)
             compose.mainClock.autoAdvance = true
         }
     }
@@ -289,11 +337,12 @@ class ScreensTest {
     }
 
     @Test
-    fun customizeScreensOpenAndApplyAPreset() {
-        val wallpaper = Presets.all.first().wallpaper
+    fun customizeScreensOpenAndChangeOneApp() {
+        val wallpaper = backdrop
         ActivityScenario.launch(CustomizeActivity::class.java).use { scenario ->
             compose.waitForIdle()
             compose.onNodeWithText("Make it yours").assertExists()
+            compose.onAllNodesWithText("Quick looks").assertCountEquals(0)
             shot("customize", wallpaper)
 
             compose.onNodeWithText("Icons").performClick()
@@ -309,83 +358,61 @@ class ScreensTest {
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
             compose.onNodeWithText("Wallpaper").performClick()
-            compose.onNodeWithText("Photo wallpapers").assertExists()
+            compose.onNodeWithText("Choose a picture").assertExists()
             shot("customize-wallpaper", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
-            compose.onNodeWithText("Themes").performClick()
-            compose.onNodeWithText("Ready-made looks").assertExists()
-            shot("customize-themes", wallpaper)
-            compose.onNodeWithTag("presets").performScrollToIndex(Presets.all.indexOfFirst { it.name == "Neon" })
-            compose.onNodeWithText("Neon").performClick()
-            compose.onNodeWithText("Use \"Neon\"?").assertExists()
-            compose.onNodeWithText("Also set its wallpaper (home and lock screen)").performClick() // untick
-            compose.onNodeWithText("Apply").performClick()
+            compose.onNodeWithText("Colors").performClick()
+            compose.onNodeWithText("Accent color").assertExists()
+            compose.onNodeWithText("App names and widget text").assertExists()
+            shot("customize-colors", wallpaper)
+            scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+
+            compose.onNodeWithText("Your apps").performClick()
+            compose.onNodeWithText("Maps").performClick()
             compose.waitForIdle()
-            assertEquals("orbitron", app.store.current.theme.fontId)
-            assertEquals(IconShape.Hexagon, app.store.current.theme.iconShape)
+            compose.onNodeWithText("Shape and style").performScrollTo()
+            compose.onNodeWithText("Circle").performClick()
+            compose.waitForIdle()
+            val maps = app.apps.apps.value.first { it.label == "Maps" }.key.id
+            assertEquals(IconShape.Circle, app.store.current.overrides[maps]?.shape)
+            shot("edit-app-look", null)
         }
     }
 
+    /** The photo, weather, calendar and clock widgets, styled by hand. */
     @Test
-    fun readyMadeLayoutGoesOnANewPage() {
-        launchHome().use {
-            val pagesBefore = app.store.current.pageCount
-            val itemsBefore = app.store.current.items
-            compose.onAllNodes(isRoot()).onFirst().performTouchInput { longClick(Offset(centerX, height * 0.38f)) }
-            compose.waitForIdle()
-            compose.onNodeWithText("Widgets").performClick()
-            compose.waitForIdle()
-            compose.onNodeWithText("Hero photo").performClick()
-            compose.onNodeWithText("Use \"Hero photo\"?").assertExists()
-            compose.onNodeWithText("Add as a new page").performClick()
-            compose.waitForIdle()
-            val state = app.store.current
-            assertEquals(pagesBefore + 1, state.pageCount)
-            assertTrue("nothing already there moves", itemsBefore.all { it in state.items })
-            val added = state.items.filter { it.page == pagesBefore }
-            assertEquals(Layouts.all.first { it.name == "Hero photo" }.items.map { it.content.kind }, added.map { (it.content as ItemContent.Builtin).kind })
-        }
-    }
-
-    /** Each ready-made layout on its own home screen, in a theme that suits it. */
-    @Test
-    fun readyMadeLayoutsRender() {
-        // A real photo for the photo widgets: one of the bundled wallpapers.
+    fun newWidgetsRender() {
+        // A real photo for the photo widget: one of the bundled wallpapers.
         val file = File(app.cacheDir, "widget-photo.jpg")
         Wallpapers.render(WallpaperSpec(photo = "mirror_sky"), 900, 1200, app).let { bmp ->
             file.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
         }
         val photo = kotlinx.coroutines.runBlocking { WidgetPhotos.save(app, android.net.Uri.fromFile(file)) }
         assertNotNull(photo)
-        app.store.update { it.copy(weather = WeatherSettings(useDeviceLocation = false, fahrenheit = false)) }
         app.weather.setForPreview(WeatherNow(18, 21, 12, 2, true, false, "Lisbon", System.currentTimeMillis()))
 
-        val looks = mapOf(
-            "Hero photo" to "Default",
-            "Big clock" to "Sunset",
-            "Glass" to "Glass",
-            "At a glance" to "Ocean",
-            "Hello" to "Ghoul",
-            "Classic" to "Paper",
-        )
-        assertEquals(Layouts.all.map { it.name }.toSet(), looks.keys)
+        fun w(kind: BuiltinKind, tweak: (WidgetStyle) -> WidgetStyle = { it }) = ItemContent.Builtin(kind, tweak(HomeController.defaultStyle(kind)))
+        val glass: (WidgetStyle) -> WidgetStyle = { it.copy(background = 0x26FFFFFF, border = true, cornerDp = 28) }
+        app.store.update { s ->
+            var next = s.copy(items = s.items.filter { it.page == DOCK_PAGE }, pageCount = 2, weather = WeatherSettings(useDeviceLocation = false, fahrenheit = false))
+            next = LayoutOps.addAt(next, w(BuiltinKind.Photo) { it.copy(image = photo, cornerDp = 32) }, Spot(0, 0, 0), 4, 3)
+            next = LayoutOps.addAt(next, w(BuiltinKind.Weather, glass), Spot(0, 0, 3), 2, 2)
+            next = LayoutOps.addAt(next, w(BuiltinKind.MonthCalendar, glass), Spot(0, 2, 3), 2, 2)
+            next = LayoutOps.addAt(next, w(BuiltinKind.Search), Spot(0, 0, 5), 4, 1)
+            next = LayoutOps.addAt(next, w(BuiltinKind.FlipClock, glass), Spot(1, 0, 0), 4, 2)
+            next = LayoutOps.addAt(next, w(BuiltinKind.Glance), Spot(1, 0, 2), 4, 1)
+            next = LayoutOps.addAt(next, w(BuiltinKind.AnalogClock), Spot(1, 0, 3), 2, 2)
+            next = LayoutOps.addAt(next, w(BuiltinKind.Battery) { it.copy(variant = 1) }, Spot(1, 2, 3), 2, 2)
+            next
+        }
         launchHome().use {
-            for (template in Layouts.all) {
-                val preset = Presets.all.first { it.name == looks.getValue(template.name) }
-                val withPhoto = template.copy(items = template.items.map { p ->
-                    if (p.content.kind == BuiltinKind.Photo) p.copy(content = p.content.copy(style = p.content.style.copy(image = photo))) else p
-                })
-                app.store.update { s ->
-                    val dockOnly = s.copy(items = s.items.filter { it.page == DOCK_PAGE }, pageCount = 0, theme = s.theme.withLookOf(preset))
-                    LayoutOps.applyTemplate(dockOnly, withPhoto, asFirstPage = false).first
-                }
-                compose.waitForIdle()
-                // Photos load in the background.
-                compose.waitUntil(10_000) { compose.onAllNodesWithText("Tap to pick a photo").fetchSemanticsNodes().isEmpty() }
-                assertEquals(template.items.size, app.store.current.items.count { it.page == 0 })
-                shot("layout-${template.name.lowercase().replace(' ', '-')}", preset.wallpaper)
-            }
+            compose.waitUntil(10_000) { compose.onAllNodesWithText("Tap to pick a photo").fetchSemanticsNodes().isEmpty() }
+            compose.onAllNodesWithText("Lisbon").onFirst().assertExists()
+            shot("widgets-photo-weather", backdrop)
+            compose.onAllNodes(isRoot()).onFirst().performTouchInput { swipeLeft() }
+            compose.waitForIdle()
+            shot("widgets-clocks", backdrop)
         }
     }
 

@@ -110,13 +110,6 @@ fun WidgetPicker(controller: HomeController, actions: LauncherActions) {
                     .padding(horizontal = 16.dp, vertical = 4.dp),
             )
             LazyColumn(Modifier.fillMaxSize().testTag("widgetList")) {
-                if (!stacking && query.isBlank()) item {
-                    SectionTitle("Ready-made layouts", "Popular setups people share online. Each one fills a new page.")
-                    LayoutTemplatesRow(theme) { template, first ->
-                        controller.applyLayout(template, first)
-                        close()
-                    }
-                }
                 item {
                     SectionTitle("Veneer widgets", "Fully styleable: pick any font, size and color after adding.")
                     LazyRow(

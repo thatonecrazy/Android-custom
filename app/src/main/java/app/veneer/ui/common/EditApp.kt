@@ -72,7 +72,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import app.veneer.apps.AppEntry
 import app.veneer.apps.normalizeForSearch
+import app.veneer.data.AppOverride
 import app.veneer.data.IconRef
+import app.veneer.data.IconShape
+import app.veneer.data.IconStyle
+import app.veneer.data.forApp
 import app.veneer.icons.IconPack
 import app.veneer.icons.IconPackInfo
 import app.veneer.ui.launcher.AppIcon
@@ -211,9 +215,49 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
                 ) {
                     Icon(Icons.Filled.Refresh, contentDescription = null)
                     Spacer(Modifier.size(8.dp))
-                    Text("Back to the theme's icon")
+                    Text("Back to the app's own icon")
                 }
             }
+
+            SectionHeader("Shape and style")
+            val theme = LocalLauncherTheme.current
+            val own = override ?: AppOverride()
+            ChoiceRow("Shape", listOf<IconShape?>(null) + IconShape.entries, own.shape, { it?.label ?: "Same as other apps" }) { v ->
+                app.store.updateOverride(entry.key.id) { it.copy(shape = v) }
+            }
+            ChoiceRow("Style", listOf<IconStyle?>(null) + IconStyle.entries, own.style, { it?.label ?: "Same as other apps" }) { v ->
+                app.store.updateOverride(entry.key.id) { it.copy(style = v) }
+            }
+
+            SectionHeader("Colors")
+            val effective = theme.forApp(own)
+            // Colors only show in the Themed style, so picking one switches this app to it.
+            fun themed(o: AppOverride) = if (effective.iconStyle == IconStyle.Themed) o else o.copy(style = IconStyle.Themed)
+            ColorRow(
+                "Icon background",
+                effective.themedBg,
+                if (own.iconBg == null) "Same as other apps" else null,
+                allowAlpha = false,
+            ) { c -> app.store.updateOverride(entry.key.id) { themed(it).copy(iconBg = c) } }
+            ColorRow(
+                "Symbol color",
+                effective.themedFg,
+                if (own.iconFg == null) "Same as other apps" else null,
+                allowAlpha = false,
+            ) { c -> app.store.updateOverride(entry.key.id) { themed(it).copy(iconFg = c) } }
+            ColorRow(
+                "Name color on the home screen",
+                own.labelColor ?: theme.labelColor,
+                if (own.labelColor == null) "Same as other apps" else null,
+            ) { c -> app.store.updateOverride(entry.key.id) { it.copy(labelColor = c) } }
+            if (own.hasOwnLook || own.labelColor != null) {
+                ClickRow("Match the other apps again", "Undo this app's shape, style and colors", icon = Icons.Filled.Refresh) {
+                    app.store.updateOverride(entry.key.id) {
+                        it.copy(shape = null, style = null, iconFg = null, iconBg = null, labelColor = null)
+                    }
+                }
+            }
+            NoteText("Icon colors use the Themed style: the app's symbol in one color on a background of another.")
 
             SectionHeader("App list")
             SwitchRow(

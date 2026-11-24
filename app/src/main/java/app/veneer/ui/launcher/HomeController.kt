@@ -22,7 +22,6 @@ import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
 import app.veneer.data.LayoutOps
-import app.veneer.data.LayoutTemplate
 import app.veneer.data.WidgetAlign
 import app.veneer.data.WidgetDefaults
 import app.veneer.data.WidgetStyle
@@ -259,13 +258,6 @@ class HomeController(val app: VeneerApp, private val touchSlop: Float) {
                 if (key != null) actions.launch(key) else actions.openCustomize("home")
             }
         }
-    }
-
-    /** Puts a ready-made layout on a page of its own and shows it. */
-    fun applyLayout(template: LayoutTemplate, asFirstPage: Boolean) {
-        var page = 0
-        store.update { val (next, p) = LayoutOps.applyTemplate(it, template, asFirstPage); page = p; next }
-        _scrollToPage.tryEmit(page)
     }
 
     fun addPage() {

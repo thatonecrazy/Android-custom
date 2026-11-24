@@ -112,7 +112,7 @@ fun HomeItemView(
             val override = state.overrides[content.id]
             val label = override?.label ?: entry?.label ?: ""
             ItemFrame(item, controller, modifier, onClick = { entry?.let { actions.launch(it.key) } }) { pressed ->
-                AppTile(entry, label, override?.icon, iconSize, showLabel, Color(state.theme.labelColor), pressed = pressed)
+                AppTile(entry, label, override?.icon, iconSize, showLabel, Color(override?.labelColor ?: state.theme.labelColor), pressed = pressed)
                 ItemMenu(item, controller, actions, entry)
             }
         }
@@ -506,7 +506,7 @@ fun DragGhost(controller: HomeController, state: LauncherState, appMap: Map<Stri
             is ItemContent.App -> {
                 val override = state.overrides[content.id]
                 val entry = appMap[content.id]
-                AppTile(entry, override?.label ?: entry?.label ?: "", override?.icon, iconSize, showLabel, Color(theme.labelColor))
+                AppTile(entry, override?.label ?: entry?.label ?: "", override?.icon, iconSize, showLabel, Color(override?.labelColor ?: theme.labelColor))
             }
             is ItemContent.Folder -> FolderTile(content, appMap, state, iconSize, showLabel)
             is ItemContent.Builtin -> BuiltinWidgetView(content.kind, content.style)

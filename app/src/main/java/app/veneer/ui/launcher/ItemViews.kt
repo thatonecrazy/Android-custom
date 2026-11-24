@@ -66,7 +66,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.veneer.apps.AppEntry
 import app.veneer.data.HomeItem
+import app.veneer.data.AppOverride
 import app.veneer.data.IconRef
+import app.veneer.data.forApp
 import app.veneer.ui.theme.LocalLauncherTheme
 import app.veneer.ui.theme.LocalThemeFont
 import app.veneer.veneer
@@ -93,11 +95,14 @@ fun NotificationDot(iconSize: Dp, modifier: Modifier = Modifier) {
 }
 
 /** An app icon rendered with the current theme. Shows nothing until the icon is ready. */
+/** Every app's own changes (shape, style, colors), so any icon anywhere can draw itself the way its app was set up. */
+val LocalAppLooks = compositionLocalOf<Map<String, AppOverride>> { emptyMap() }
+
 @Composable
 fun AppIcon(entry: AppEntry?, override: IconRef?, size: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val provider = context.veneer.icons
-    val theme = LocalLauncherTheme.current
+    val theme = LocalLauncherTheme.current.forApp(entry?.let { LocalAppLooks.current[it.key.id] })
     val sizePx = with(LocalDensity.current) { size.roundToPx() }.coerceAtLeast(1)
     val version by provider.version.collectAsState()
     if (entry == null) {

@@ -139,36 +139,6 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                 }
             }
         }
-        item { SectionHeader("Photo wallpapers") }
-        item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(PhotoWallpapers.all, key = { it.id }) { photo ->
-                    Column(
-                        Modifier
-                            .width(120.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .clickable {
-                                val chosen = WallpaperSpec(photo = photo.id)
-                                chooseTarget = { target ->
-                                    busy = true
-                                    app.scope.launch { finish(Wallpapers.applyGenerated(context.applicationContext, chosen, target)) }
-                                }
-                            },
-                    ) {
-                        WallpaperPreview(
-                            WallpaperSpec(photo = photo.id),
-                            Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(20.dp)),
-                        )
-                        Text(photo.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
-                    }
-                }
-            }
-        }
-        item { NoteText("Free-to-use photos from Wikimedia Commons, recolored for Veneer. Credits are under Backup → Photo and weather credits.") }
-
         item { SectionHeader("Your pictures on shuffle") }
         item {
             SettingCard {
@@ -247,6 +217,36 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                 ) { Text("Set as wallpaper") }
             }
         }
+        item { SectionHeader("Free photos") }
+        item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(PhotoWallpapers.all, key = { it.id }) { photo ->
+                    Column(
+                        Modifier
+                            .width(120.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable {
+                                val chosen = WallpaperSpec(photo = photo.id)
+                                chooseTarget = { target ->
+                                    busy = true
+                                    app.scope.launch { finish(Wallpapers.applyGenerated(context.applicationContext, chosen, target)) }
+                                }
+                            },
+                    ) {
+                        WallpaperPreview(
+                            WallpaperSpec(photo = photo.id),
+                            Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(20.dp)),
+                        )
+                        Text(photo.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 6.dp, start = 4.dp))
+                    }
+                }
+            }
+        }
+        item { NoteText("Free-to-use photos from Wikimedia Commons, recolored for Veneer. Credits are under Backup → Photo and weather credits.") }
+
         item { SectionHeader("System colors") }
         item {
             SettingCard {
@@ -291,7 +291,7 @@ fun AppsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, o
             q.isEmpty() || normalizeForSearch(state.overrides[e.key.id]?.label ?: e.label).contains(q)
         }
     }
-    SettingsPage("Single apps", onBack, state, apps, preview = false, section = Section.Apps) {
+    SettingsPage("Your apps", onBack, state, apps, preview = false, section = Section.Apps) {
         item {
             OutlinedTextField(
                 value = query,
@@ -309,6 +309,7 @@ fun AppsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, o
             val override = state.overrides[entry.key.id]
             val notes = listOfNotNull(
                 if (override?.icon != null) "Custom icon" else null,
+                if (override?.hasOwnLook == true || override?.labelColor != null) "Own look" else null,
                 if (override?.label != null) "Renamed from ${entry.label}" else null,
                 if (override?.hidden == true) "Hidden" else null,
                 if (entry.isWorkProfile) "Work" else null,
@@ -360,7 +361,7 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         item { SectionHeader("Backup") }
         item {
             SettingCard {
-                ClickRow("Save a backup", "Your theme, home screen layout, app names, hidden apps and saved themes", icon = Icons.Filled.Save) {
+                ClickRow("Save a backup", "Your look, home screen layout, everything you changed on single apps, and saved looks", icon = Icons.Filled.Save) {
                     val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
                     export.launch("veneer-backup-$day.json")
                 }
@@ -370,6 +371,9 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         item {
             NoteText("Widgets from other apps can't move between phones; they show as \"unavailable\" after restoring on a new phone. Custom pictures and imported fonts stay on this phone.")
         }
+        item { SectionHeader("Your saved looks") }
+        item { YourLooksCard(state) }
+
         item { SectionHeader("Start over") }
         item {
             SettingCard {

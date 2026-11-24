@@ -112,7 +112,7 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
     BackHandler { controller.closeAll() }
 
     LauncherTheme(theme, font) {
-      CompositionLocalProvider(LocalNotificationCounts provides notificationCounts) {
+      CompositionLocalProvider(LocalNotificationCounts provides notificationCounts, LocalAppLooks provides state.overrides) {
         Box(
             Modifier
                 .fillMaxSize()

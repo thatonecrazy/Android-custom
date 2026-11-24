@@ -112,7 +112,7 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
                 controller.homeMenuOpen = false
                 actions.openCustomize("wallpaper")
             }
-            SheetRow(Icons.Filled.Palette, Vivid.Pink, "Customize", "Icons, fonts, themes, grid and dock") {
+            SheetRow(Icons.Filled.Palette, Vivid.Pink, "Customize", "Icons, colors, fonts, each app, grid and dock") {
                 controller.homeMenuOpen = false
                 actions.openCustomize()
             }
@@ -240,11 +240,11 @@ fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
             FontStrip(selected = style.fontId, themeOption = true) { id -> update { it.copy(fontId = id) } }
             IntSliderRow("Size", style.sizeSp, 10..160, { "$it sp" }) { v -> update { it.copy(sizeSp = v) } }
             val theme = state.theme
-            ColorRow("Text color", style.color ?: theme.labelColor, if (style.color == null) "Following the theme" else null) { c ->
+            ColorRow("Text color", style.color ?: theme.labelColor, if (style.color == null) "Same as app names" else null) { c ->
                 update { it.copy(color = c) }
             }
             if (style.color != null) {
-                ClickRow("Use the theme's text color") { update { it.copy(color = null) } }
+                ClickRow("Use the same color as app names") { update { it.copy(color = null) } }
             }
             ChoiceRow("Alignment", WidgetAlign.entries, style.align, { it.name }) { a -> update { it.copy(align = a) } }
             SwitchRow("Bold", style.bold) { b -> update { it.copy(bold = b) } }
@@ -281,10 +281,10 @@ fun WidgetStyleSheet(controller: HomeController, target: StyleTarget) {
             ColorRow(
                 "Background color",
                 style.background ?: defaultBg,
-                subtitle = if (style.background == null) "Following the theme" else "Lower the opacity for a see-through card",
+                subtitle = if (style.background == null) "The default for this widget" else "Lower the opacity for a see-through card",
             ) { c -> update { it.copy(background = c) } }
             if (style.background != null) {
-                ClickRow("Use the theme's background") { update { it.copy(background = null) } }
+                ClickRow("Use the default background") { update { it.copy(background = null) } }
             }
             IntSliderRow("Corner roundness", style.cornerDp, 0..48, { "$it dp" }) { v -> update { it.copy(cornerDp = v) } }
             Spacer(Modifier.height(32.dp))

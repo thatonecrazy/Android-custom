@@ -74,7 +74,6 @@ import app.veneer.data.BuiltinKind
 import app.veneer.data.DOCK_PAGE
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
-import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
 import app.veneer.system.SystemActions
@@ -82,6 +81,7 @@ import app.veneer.ui.common.EdgeGlowOverlay
 import app.veneer.ui.common.EditAppScreen
 import app.veneer.ui.common.WallpaperPreview
 import app.veneer.ui.launcher.AppIcon
+import app.veneer.ui.launcher.LocalAppLooks
 import app.veneer.ui.launcher.AppTile
 import app.veneer.ui.launcher.BuiltinWidgetView
 import app.veneer.ui.launcher.HomeController
@@ -93,14 +93,14 @@ import app.veneer.ui.theme.Vivid
 import app.veneer.veneer
 
 enum class Section(val id: String, val title: String, val subtitle: String, val icon: ImageVector, val colors: List<Color>) {
-    Themes("themes", "Themes", "One-tap looks", Icons.Filled.Palette, listOf(Vivid.Pink, Vivid.Violet)),
-    IconsSection("icons", "Icons", "Shapes, packs, styles", Icons.Filled.Category, listOf(Vivid.Orange, Vivid.Coral)),
+    IconsSection("icons", "Icons", "Shape, style, size, packs", Icons.Filled.Category, listOf(Vivid.Orange, Vivid.Coral)),
+    Apps("apps", "Your apps", "Name, icon, colors", Icons.Filled.Brush, listOf(Vivid.Amber, Vivid.Orange)),
+    Colors("colors", "Colors", "Accent, text, dock, icons", Icons.Filled.Palette, listOf(Vivid.Pink, Vivid.Violet)),
     Fonts("fonts", "Fonts", "13 fonts, or your own", Icons.Filled.TextFields, listOf(Vivid.Teal, Vivid.Sky)),
-    HomeLayout("home", "Home screen", "Weather, grid, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
-    Drawer("drawer", "App list", "Columns and colors", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
-    Wallpaper("wallpaper", "Wallpaper", "Gradients, system colors", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
-    Apps("apps", "Single apps", "Rename, re-icon, hide", Icons.Filled.Brush, listOf(Vivid.Amber, Vivid.Orange)),
-    Backup("backup", "Backup", "Save and restore", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
+    HomeLayout("home", "Home screen", "Grid, dock, bars, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
+    Drawer("drawer", "App list", "Columns and labels", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
+    Wallpaper("wallpaper", "Wallpaper", "Your photos, gradients", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
+    Backup("backup", "Backup", "Saved looks, restore", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
     ;
 
     val color: Color get() = colors.first()
@@ -111,7 +111,7 @@ enum class Section(val id: String, val title: String, val subtitle: String, val 
     }
 }
 
-/** Applies another theme's look while keeping this phone's layout choices (grid, dock size, gestures). */
+/** Applies a saved look (or the defaults) while keeping this phone's layout choices (grid, dock size, gestures). */
 fun ThemeConfig.withLookOf(other: ThemeConfig) = other.copy(
     gridColumns = gridColumns,
     gridRows = gridRows,
@@ -138,6 +138,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
     val section = Section.from(sectionId)
 
     SettingsTheme(state.theme, font) {
+      CompositionLocalProvider(LocalAppLooks provides state.overrides) {
       Box(Modifier.fillMaxSize()) {
         val editing = editingAppId?.let { id -> apps.firstOrNull { it.key.id == id } }
         when {
@@ -151,7 +152,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
                 BackHandler(onBack = back)
                 SectionColors(section.color) {
                     when (section) {
-                        Section.Themes -> ThemesScreen(state, apps, back)
+                        Section.Colors -> ColorsScreen(state, apps, back)
                         Section.IconsSection -> IconsScreen(state, apps, back, openApps = { sectionId = Section.Apps.id })
                         Section.Fonts -> FontsScreen(state, apps, back)
                         Section.HomeLayout -> HomeLayoutScreen(state, apps, back)
@@ -164,6 +165,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
             }
         }
         EdgeGlowOverlay()
+      }
       }
     }
 }
@@ -274,12 +276,11 @@ fun ThemePreview(state: LauncherState, apps: List<AppEntry>, modifier: Modifier 
 private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Section) -> Unit, onClose: () -> Unit) {
     val context = LocalContext.current
     var isDefault by remember { mutableStateOf(SystemActions.isDefaultLauncher(context)) }
-    var applying by remember { mutableStateOf<ThemeConfig?>(null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { isDefault = SystemActions.isDefaultLauncher(context) }
     SettingsPage("Make it yours", onClose, state, apps) {
         item {
             Text(
-                "Pick a look in one tap, or fine-tune every detail.",
+                "Everything here starts plain and is yours to change: each part of the home screen, and each app.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 8.dp),
@@ -308,17 +309,6 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Vivid.Violet),
                     ) { Text("Set as home app", fontWeight = FontWeight.Bold) }
                 }
-            }
-        }
-        item {
-            Text(
-                "Quick looks",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 22.dp, top = 14.dp, bottom = 10.dp),
-            )
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(Presets.all, key = { it.name }) { preset -> LookBubble(preset, apps, preset.name == state.theme.name) { applying = preset } }
             }
         }
         item {
@@ -362,7 +352,6 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
             }
         }
     }
-    applying?.let { ApplyThemeDialog(it) { applying = null } }
 }
 
 @Composable
@@ -393,43 +382,5 @@ private fun SectionTile(section: Section, modifier: Modifier, onClick: () -> Uni
                 overflow = TextOverflow.Ellipsis,
             )
         }
-    }
-}
-
-/** A round thumbnail of a preset's wallpaper with one of your icons in its style. */
-@Composable
-private fun LookBubble(preset: ThemeConfig, apps: List<AppEntry>, selected: Boolean, onClick: () -> Unit) {
-    val sample = remember(apps) { apps.firstOrNull() }
-    Column(
-        Modifier
-            .width(72.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .then(if (selected) Modifier.background(MaterialTheme.colorScheme.primary) else Modifier)
-                .padding(if (selected) 3.dp else 0.dp)
-                .clip(CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            WallpaperPreview(preset.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
-            CompositionLocalProvider(LocalLauncherTheme provides preset) {
-                if (sample != null) AppIcon(sample, null, 30.dp)
-            }
-            if (selected) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = "In use",
-                    tint = Color.White,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(14.dp),
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(preset.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

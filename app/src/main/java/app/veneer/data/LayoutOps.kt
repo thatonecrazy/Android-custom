@@ -211,21 +211,6 @@ object LayoutOps {
         return updateContent(state, itemId, stack.copy(widgets = stack.widgets.mapIndexed { i, w -> if (i == index) content else w }))
     }
 
-    /**
-     * Puts a ready-made layout on its own page: after the last page, or as the first page with the
-     * other pages moving one to the right. Nothing already on the home screen is removed.
-     */
-    fun applyTemplate(state: LauncherState, template: LayoutTemplate, asFirstPage: Boolean): Pair<LauncherState, Int> {
-        val page = if (asFirstPage) 0 else state.pageCount
-        var s = if (asFirstPage) {
-            state.copy(items = state.items.map { if (it.page != DOCK_PAGE) it.copy(page = it.page + 1) else it }, pageCount = state.pageCount + 1)
-        } else {
-            state.copy(pageCount = state.pageCount + 1)
-        }
-        template.items.forEach { p -> s = addAt(s, p.content, Spot(page, p.x, p.y), p.spanX, p.spanY) }
-        return reflow(s) to page
-    }
-
     /** Resizes an item, sliding it left/up if needed to stay on the grid. */
     fun resize(state: LauncherState, itemId: Long, spanX: Int, spanY: Int): LauncherState? {
         val item = state.items.firstOrNull { it.id == itemId } ?: return null

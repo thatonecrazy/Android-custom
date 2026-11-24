@@ -6,7 +6,10 @@ import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
 import app.veneer.data.LayoutOps
 import app.veneer.data.LayoutOps.Spot
-import app.veneer.data.Layouts
+import app.veneer.data.AppOverride
+import app.veneer.data.IconShape
+import app.veneer.data.IconStyle
+import app.veneer.data.forApp
 import app.veneer.data.ThemeConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -180,38 +183,16 @@ class LayoutOpsTest {
     }
 
     @Test
-    fun templatesFitTheStandardGrid() {
-        val grid = LauncherState(theme = ThemeConfig(gridColumns = 4, gridRows = 6, dockColumns = 5), pageCount = 0)
-        for (template in Layouts.all) {
-            val (s, page) = LayoutOps.applyTemplate(grid, template, asFirstPage = false)
-            assertEquals(0, page)
-            noOverlaps(s)
-            // Nothing had to be moved to fit.
-            assertEquals(template.items.map { Triple(it.x, it.y, it.spanX to it.spanY) }, s.items.map { Triple(it.x, it.y, it.spanX to it.spanY) })
-        }
-    }
-
-    @Test
-    fun templateAsNewPageOrFirstPageKeepsEverythingElse() {
-        val template = Layouts.all.first()
-        var s = LauncherState(theme = ThemeConfig(gridColumns = 4, gridRows = 6, dockColumns = 4), pageCount = 2)
-        s = LayoutOps.addAt(s, app(1), Spot(0, 0, 0), 1, 1)
-        s = LayoutOps.addAt(s, app(2), Spot(1, 2, 2), 1, 1)
-        s = LayoutOps.addAt(s, app(3), Spot(DOCK_PAGE, 0, 0), 1, 1)
-
-        val (atEnd, endPage) = LayoutOps.applyTemplate(s, template, asFirstPage = false)
-        assertEquals(2, endPage)
-        assertEquals(3, atEnd.pageCount)
-        assertTrue(s.items.all { it in atEnd.items })
-        assertEquals(template.items.size, atEnd.items.count { it.page == 2 })
-
-        val (first, firstPage) = LayoutOps.applyTemplate(s, template, asFirstPage = true)
-        assertEquals(0, firstPage)
-        assertEquals(3, first.pageCount)
-        assertEquals(1, first.items.first { it.content == app(1) }.page)
-        assertEquals(2, first.items.first { it.content == app(2) }.page)
-        assertEquals(DOCK_PAGE, first.items.first { it.content == app(3) }.page)
-        assertEquals(template.items.size, first.items.count { it.page == 0 })
-        noOverlaps(first)
+    fun oneAppCanHaveItsOwnIconLook() {
+        val theme = ThemeConfig(iconShape = IconShape.Squircle, iconStyle = IconStyle.Original)
+        assertEquals(theme, theme.forApp(null))
+        assertEquals(theme, theme.forApp(AppOverride(label = "Just renamed")))
+        val own = theme.forApp(AppOverride(shape = IconShape.Circle, iconBg = 0xFF00FF00.toInt(), style = IconStyle.Themed))
+        assertEquals(IconShape.Circle, own.iconShape)
+        assertEquals(IconStyle.Themed, own.iconStyle)
+        assertEquals(0xFF00FF00.toInt(), own.themedBg)
+        assertEquals(theme.themedFg, own.themedFg)
+        assertTrue(AppOverride().isEmpty)
+        assertTrue(!AppOverride(labelColor = 0xFFFFFFFF.toInt()).isEmpty)
     }
 }

@@ -155,7 +155,7 @@ data class ThemeConfig(
     // Accent used for menus, highlights and the settings screens
     val accent: Int = 0xFF8C7BFF.toInt(),
 
-    /** Optional wallpaper that goes with this theme (presets use it). */
+    /** The wallpaper made in Veneer for this look, if any, so a saved look can bring it back. */
     val wallpaper: WallpaperSpec? = null,
 )
 
@@ -293,9 +293,27 @@ data class AppOverride(
     val label: String? = null,
     val icon: IconRef? = null,
     val hidden: Boolean = false,
+    /** This app's own icon shape, style and colors; null follows the rest of the icons. */
+    val shape: IconShape? = null,
+    val style: IconStyle? = null,
+    val iconFg: Int? = null,
+    val iconBg: Int? = null,
+    /** This app's name color on the home screen; null follows the theme. */
+    val labelColor: Int? = null,
 ) {
-    val isEmpty: Boolean get() = label == null && icon == null && !hidden
+    val hasOwnLook: Boolean get() = shape != null || style != null || iconFg != null || iconBg != null
+    val isEmpty: Boolean get() = label == null && icon == null && !hidden && !hasOwnLook && labelColor == null
 }
+
+/** The theme as one app's icon sees it, with that app's own shape, style and colors applied. */
+fun ThemeConfig.forApp(o: AppOverride?): ThemeConfig =
+    if (o == null || !o.hasOwnLook) this
+    else copy(
+        iconShape = o.shape ?: iconShape,
+        iconStyle = o.style ?: iconStyle,
+        themedFg = o.iconFg ?: themedFg,
+        themedBg = o.iconBg ?: themedBg,
+    )
 
 @Serializable
 data class LauncherState(

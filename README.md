@@ -2,23 +2,19 @@
 
 A home-screen app for Android that lets you restyle what you see every day: every app icon, the fonts, the widgets, the app list, the wallpaper and the system colors that follow it.
 
-![All thirteen themes](docs/themes.png)
+There are no ready-made themes. Everything starts plain, and you build your own look one piece at a time: icon shape, icon style and colors, font, text and dock colors, widgets, wallpaper, and then each single app on its own.
 
-| Ghoul | Ghoul with the edge glow |
-| --- | --- |
-| ![Ghoul theme](docs/screenshots/home-ghoul-hello.png) | ![Edge glow on unlock](docs/screenshots/home-ghoul-glow.png) |
+| Start | Icon shape | Icon colors | Font | Text and dock | Single apps |
+| --- | --- | --- | --- | --- | --- |
+| ![Start](docs/screenshots/home-default.png) | ![Teardrop icons](docs/screenshots/step-1-shape.png) | ![Themed icons in pink](docs/screenshots/step-2-icon-colors.png) | ![Quicksand font](docs/screenshots/step-3-font.png) | ![Text and dock colors](docs/screenshots/step-4-colors.png) | ![Maps and Music with their own look](docs/screenshots/step-5-single-apps.png) |
 
-### Ready-made widget layouts
-
-Six home screens modeled on the setups people share most online: one big "hero" widget (a photo or a large clock), two or three small ones underneath (weather, this month, music), glass cards and empty space for the wallpaper. Each one goes on a page of its own from the widget picker, and every widget in it can be restyled afterwards.
-
-| Hero photo | Big clock | Glass |
+| Customize | Colors | One app's own look |
 | --- | --- | --- |
-| ![Hero photo layout](docs/screenshots/layout-hero-photo.png) | ![Big clock layout](docs/screenshots/layout-big-clock.png) | ![Glass layout](docs/screenshots/layout-glass.png) |
+| ![Customize](docs/screenshots/customize.png) | ![Colors](docs/screenshots/customize-colors.png) | ![Edit one app](docs/screenshots/edit-app-look.png) |
 
-| At a glance | Hello | Classic |
+| Photo, weather, month | Clocks and battery ring | Red look with the edge glow |
 | --- | --- | --- |
-| ![At a glance layout](docs/screenshots/layout-at-a-glance.png) | ![Hello layout](docs/screenshots/layout-hello.png) | ![Classic layout](docs/screenshots/layout-classic.png) |
+| ![Photo, weather and month widgets](docs/screenshots/widgets-photo-weather.png) | ![Flip clock, at a glance, analog clock, battery ring](docs/screenshots/widgets-clocks.png) | ![Edge glow on unlock](docs/screenshots/home-red-glow.png) |
 
 ![Every icon shape in each icon style](docs/screenshots/icon-shapes.png)
 
@@ -30,9 +26,9 @@ Six home screens modeled on the setups people share most online: one big "hero" 
 | --- | --- | --- |
 | ![App list](docs/screenshots/drawer.png) | ![Edit an app](docs/screenshots/edit-app.png) | ![Widget picker](docs/screenshots/widget-picker.png) |
 
-| Customize | Icons | Fonts |
+| Icons | Fonts | Wallpaper |
 | --- | --- | --- |
-| ![Customize](docs/screenshots/customize.png) | ![Icon settings](docs/screenshots/customize-icons.png) | ![Font settings](docs/screenshots/customize-fonts.png) |
+| ![Icon settings](docs/screenshots/customize-icons.png) | ![Font settings](docs/screenshots/customize-fonts.png) | ![Wallpaper settings](docs/screenshots/customize-wallpaper.png) |
 
 The screenshots are produced by the test suite (see [Building](#building)), with sample apps and a generated wallpaper.
 
@@ -43,7 +39,13 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - Eight shapes: system, circle, squircle, rounded, square, teardrop, leaf, hexagon.
 - Full color, extra vivid (turns up every icon's colors), grayscale, or themed: one-color symbols in your own two colors, using the one-color icons apps ship for Android 13 and newer, and a tinted logo for many apps that don't.
 - Icon size, and a matching background for old-style square icons.
-- Per app: an icon from any pack, your own picture, a new name, or hide it from the app list.
+
+**Each app on its own** (Customize → Your apps, or hold an app → Edit)
+- A new name, an icon from any pack, or your own picture as its icon.
+- Its own icon shape and style, different from the rest.
+- Its own icon colors: the app's symbol in one color on a background of another.
+- Its own name color on the home screen.
+- Hide it from the app list.
 
 **Fonts**
 - 13 bundled fonts (Inter, Outfit, Space Grotesk, Quicksand, Comfortaa, Playfair Display, Lora, JetBrains Mono, Orbitron, Bebas Neue, Caveat, Pacifico, Press Start 2P) plus the phone's built-in families.
@@ -55,7 +57,6 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - Veneer's own widgets: clock, date, clock with date, greeting, text, search bar, battery (dots or a ring), music (art, title and play controls for whatever's playing) and calendar agenda (your next events in each calendar's color).
 - The most popular widget types from setup galleries: photo (your own picture, framed as a rounded card, pill, circle or square, optionally black and white), weather (a square tile or a slim bar), month calendar, analog clock, flip clock and "at a glance" (date, weather and your next event).
 - Each one has its own font, size, color, alignment and roundness, and a card behind it: none, frosted glass, dark or your accent color.
-- Ready-made layouts: whole home screens of widgets that fit together, added as a new page or as your first page.
 - Widget stacks: several widgets in one spot. Swipe up and down to switch between them.
 
 **Home screen, dock and app list**
@@ -69,17 +70,19 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - Darken the wallpaper, hide the status bar or pick light or dark status bar icons.
 - App list columns, background and text color.
 
+**Colors**
+- One screen with every color: accent, app names and widget text, icon symbol and background, dock, app list. Or take them all from your wallpaper in one tap.
+
 **Wallpaper and system colors**
-- Photo wallpapers bundled with the app: Spider lilies, Lone lily and Mirror sky (free-to-use photos from Wikimedia Commons, recolored; credits in the app and below).
+- Any picture from your phone as the wallpaper, for the home screen, lock screen or both.
 - Wallpaper shuffle: pick any number of your own pictures and Veneer rotates them every time you lock, every hour or every day, on the home screen, lock screen or both. It switches while the screen is off.
-- Set a picture as wallpaper, or generate one: solid, vertical, diagonal, glow, aurora (soft overlapping glows) or tendrils, with two or three colors.
+- Or make one: solid, vertical, diagonal, glow, aurora (soft overlapping glows) or tendrils, in two or three colors you pick.
+- Three free photos are included too (Spider lilies, Lone lily and Mirror sky, from Wikimedia Commons; credits in the app and below).
 - Edge glow: a light sweeps around the screen edge when you unlock, and in green, blue or red when the sound mode changes (like Samsung's edge lighting routines).
 - On Android 12 and newer the phone takes its system colors (quick settings, Settings, keyboard, Material You apps) from the wallpaper, so the gradient maker doubles as a system color picker.
 
-**Themes**
-- Thirteen ready-made looks, each with a matching wallpaper: Default, Ghoul, Sunset, Candy, Ocean, Neon, Playful, Glass, Leaf, Paper, Minimal Mono, Terminal, Elegant.
-- Ghoul is inspired by the look of Tokyo Ghoul: black, crimson and white, red-glyph icons, a tall condensed font, and red spider lilies on black (a free-to-use photo, recolored). No artwork from the series is included; put your own pictures on shuffle if you like.
-- Save your own looks, export them to a file to share, import theme files.
+**Saving and backup**
+- Save the look you built, switch between your saved looks, or export one to a file for another phone.
 - Back up and restore your whole setup.
 
 ## What Android doesn't allow
@@ -110,7 +113,7 @@ To switch back, go to Settings → Apps → Default apps → Home app.
 | Drop an app on another app | A folder (drop more apps on it to add them) |
 | Hold a widget, then "Stack another widget here" | A widget stack you swipe through |
 | Hold near the screen edge while dragging | Move to the next page |
-| Hold an app in the app list | Add to home, change icon or name, hide, uninstall |
+| Hold an app in the app list | Add to home, change its icon, shape, colors or name, hide, uninstall |
 | Tap the clock, date or battery widget | Alarms, calendar, battery settings |
 | Tap a photo widget | Pick its picture (hold it, then "Edit style" to change it later) |
 | Tap a weather widget | Weather settings: your location or a city, °C or °F |
@@ -136,7 +139,7 @@ Needs JDK 17 or newer and the Android SDK (platform 37, build-tools 37). Put the
 ./gradlew :app:testDebugUnitTest    # unit and Robolectric UI tests; writes docs/screenshots/
 ```
 
-The UI tests run the real home screen and customization screens in Robolectric with native graphics: launching, swiping to the app list, searching, long-press menus, drag-and-drop, applying presets and rendering every icon shape and style.
+The UI tests run the real home screen and customization screens in Robolectric with native graphics: launching, swiping to the app list, searching, long-press menus, drag-and-drop, building a look step by step, changing a single app, and rendering every icon shape and style.
 
 Builds are signed with `app/debug.keystore`, a project-specific debug key committed on purpose so every build installs over the previous one. Use your own private key before publishing to a store.
 
@@ -144,7 +147,7 @@ Builds are signed with `app/debug.keystore`, a project-specific debug key commit
 
 | Path | What it holds |
 | --- | --- |
-| `data/` | Saved state (theme, layout, per-app changes), grid placement logic, theme presets |
+| `data/` | Saved state (look, layout, per-app changes) and grid placement logic |
 | `apps/` | The list of installed apps across profiles, launching, uninstalling |
 | `icons/` | Icon shapes, rendering (shapes, themed, grayscale), icon pack parsing, icon cache |
 | `fonts/` | Built-in, bundled and imported fonts |
@@ -157,7 +160,6 @@ Builds are signed with `app/debug.keystore`, a project-specific debug key commit
 ## Licenses
 
 The bundled wallpaper photos come from Wikimedia Commons: "Lycoris Radiata 2017 2" by Chihiro H (CC BY 3.0), "Red spider lily (Lycoris radiata)" by Offnfopt (public domain) and "Uyuni Salt Lake (Salar de Uyuni), Bolivia, 12-2022" by Abel Maestro Garcia (public domain). They are cropped and recolored; full credits and links are in `app/src/main/assets/photo_credits.txt` and in the app under Backup → Photo and weather credits.
-
 
 Weather data comes from [Open-Meteo](https://open-meteo.com) (CC BY 4.0).
 

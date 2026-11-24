@@ -72,7 +72,6 @@ import app.veneer.apps.AppEntry
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import app.veneer.data.LauncherState
-import app.veneer.data.Presets
 import app.veneer.data.ThemeConfig
 import app.veneer.data.VeneerJson
 import app.veneer.data.WallpaperSpec
@@ -114,9 +113,72 @@ fun matchWallpaper(context: Context, theme: ThemeConfig): ThemeConfig? {
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Every color Veneer uses, in one place. */
 @Composable
-fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) {
+fun ColorsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val app = context.veneer
+    val theme = state.theme
+    fun update(transform: (ThemeConfig) -> ThemeConfig) = app.store.updateTheme(transform)
+
+    SettingsPage("Colors", onBack, state, apps, section = Section.Colors) {
+        item { SectionHeader("Accent") }
+        item {
+            SettingCard {
+                ColorRow("Accent color", theme.accent, "Menus, highlights, weather icons and these settings", allowAlpha = false) { c ->
+                    update { it.copy(accent = c) }
+                }
+                ClickRow("Take colors from my wallpaper", "Sets the accent, dock and icon colors from your wallpaper's main color", icon = Icons.Filled.AutoAwesome) {
+                    val next = matchWallpaper(context, theme)
+                    if (next == null) Toast.makeText(context, "Couldn't read your wallpaper's colors", Toast.LENGTH_SHORT).show()
+                    else update { next }
+                }
+            }
+        }
+
+        item { SectionHeader("Text") }
+        item {
+            SettingCard {
+                ColorRow("App names and widget text", theme.labelColor, "Widgets you've given their own color keep it") { c ->
+                    update { it.copy(labelColor = c) }
+                }
+                SwitchRow("Shadow behind text", theme.labelShadow, "Keeps light text readable on busy wallpapers") { b ->
+                    update { it.copy(labelShadow = b) }
+                }
+            }
+        }
+
+        item { SectionHeader("Icons") }
+        item {
+            SettingCard {
+                ColorRow("Symbol color", theme.themedFg, "For the Themed icon style", allowAlpha = false) { c -> update { it.copy(themedFg = c) } }
+                ColorRow("Icon background", theme.themedBg, "For the Themed icon style", allowAlpha = false) { c -> update { it.copy(themedBg = c) } }
+                ColorRow("Behind old-style icons", theme.legacyBg, "Fills the shape around icons that aren't made for it", allowAlpha = false) { c ->
+                    update { it.copy(legacyBg = c) }
+                }
+                if (theme.iconStyle != IconStyle.Themed) {
+                    ClickRow("Use the Themed style", "Every icon becomes one symbol color on one background color", icon = Icons.Filled.Brush) {
+                        update { it.copy(iconStyle = IconStyle.Themed) }
+                    }
+                }
+                NoteText("Single apps can have their own colors too: Customize → Your apps.")
+            }
+        }
+
+        item { SectionHeader("Dock and app list") }
+        item {
+            SettingCard {
+                ColorRow("Dock", theme.dockBg, "Lower the opacity for glass, or make it fully clear") { c -> update { it.copy(dockBg = c) } }
+                ColorRow("App list background", theme.drawerBg, "Lower the opacity to see your wallpaper through it") { c -> update { it.copy(drawerBg = c) } }
+                ColorRow("App list text", theme.drawerTextColor, allowAlpha = false) { c -> update { it.copy(drawerTextColor = c) } }
+            }
+        }
+    }
+}
+
+/** Looks you saved yourself, and look files to move between phones. */
+@Composable
+fun YourLooksCard(state: LauncherState) {
     val context = LocalContext.current
     val app = context.veneer
     val scope = rememberCoroutineScope()
@@ -124,7 +186,7 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
     var applying by remember { mutableStateOf<ThemeConfig?>(null) }
     var saving by remember { mutableStateOf(false) }
 
-    val exportTheme = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    val exportLook = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
             val ok = withContext(Dispatchers.IO) {
                 runCatching {
@@ -133,10 +195,10 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
                     }
                 }.isSuccess
             }
-            Toast.makeText(context, if (ok) "Theme saved" else "Couldn't save the file", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, if (ok) "Look saved" else "Couldn't save the file", Toast.LENGTH_SHORT).show()
         }
     }
-    val importTheme = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val importLook = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val parsed = withContext(Dispatchers.IO) {
                 runCatching {
@@ -146,133 +208,45 @@ fun ThemesScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
                     VeneerJson.decodeFromJsonElement(ThemeConfig.serializer(), themeJson)
                 }.getOrNull()
             }
-            if (parsed == null) Toast.makeText(context, "That file isn't a Veneer theme", Toast.LENGTH_SHORT).show()
+            if (parsed == null) Toast.makeText(context, "That file isn't a Veneer look", Toast.LENGTH_SHORT).show()
             else applying = parsed
         }
     }
 
-    SettingsPage("Themes", onBack, state, apps, section = Section.Themes) {
-        item { SectionHeader("Ready-made looks") }
-        item {
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.testTag("presets"),
-            ) {
-                items(Presets.all, key = { it.name }) { preset ->
-                    PresetCard(preset, apps, preset.name == theme.name) { applying = preset }
-                }
-            }
+    SettingCard {
+        ClickRow("Save my current look", "Keep your icons, font and colors so you can come back to them", icon = Icons.Filled.BookmarkAdd) { saving = true }
+        state.savedThemes.forEachIndexed { index, saved ->
+            ClickRow(
+                saved.name,
+                "${saved.iconShape.label} icons · ${app.fonts.name(saved.fontId)}",
+                trailing = {
+                    IconButton(onClick = {
+                        app.store.update { s -> s.copy(savedThemes = s.savedThemes.filterIndexed { i, _ -> i != index }) }
+                    }) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
+                },
+            ) { applying = saved }
         }
-        item { NoteText("Applying a look keeps your apps and widgets where they are. Grid and dock size stay as you set them.") }
-
-        item { SectionHeader("Colors") }
-        item {
-            SettingCard {
-                ColorRow("Accent color", theme.accent, "Menus, highlights and these settings", allowAlpha = false) { c ->
-                    app.store.updateTheme { it.copy(accent = c) }
-                }
-                ClickRow("Match my wallpaper", "Sets the accent and themed icon colors from your wallpaper", icon = Icons.Filled.AutoAwesome) {
-                    val next = matchWallpaper(context, theme)
-                    if (next == null) Toast.makeText(context, "Couldn't read your wallpaper's colors", Toast.LENGTH_SHORT).show()
-                    else app.store.updateTheme { next }
-                }
-            }
+        ClickRow("Export my look", "As a file you can move to another phone", icon = Icons.Filled.IosShare) {
+            exportLook.launch("my-look.veneer-theme.json")
         }
-
-        item { SectionHeader("Your themes") }
-        item {
-            SettingCard {
-                ClickRow("Save the current look", "Keep it so you can switch back any time", icon = Icons.Filled.BookmarkAdd) { saving = true }
-                state.savedThemes.forEachIndexed { index, saved ->
-                    ClickRow(
-                        saved.name,
-                        "${saved.iconShape.label} icons · ${app.fonts.name(saved.fontId)}",
-                        trailing = {
-                            IconButton(onClick = {
-                                app.store.update { s -> s.copy(savedThemes = s.savedThemes.filterIndexed { i, _ -> i != index }) }
-                            }) { Icon(Icons.Filled.Delete, contentDescription = "Delete") }
-                        },
-                    ) { applying = saved }
-                }
-            }
-        }
-
-        item { SectionHeader("Share") }
-        item {
-            SettingCard {
-                ClickRow("Export the current look", "Save it as a file you can send to another phone", icon = Icons.Filled.IosShare) {
-                    exportTheme.launch("${theme.name.ifBlank { "theme" }}.veneer-theme.json")
-                }
-                ClickRow("Import a theme file", icon = Icons.Filled.FileOpen) { importTheme.launch(arrayOf("*/*")) }
-            }
-        }
+        ClickRow("Open a look file", icon = Icons.Filled.FileOpen) { importLook.launch(arrayOf("*/*")) }
     }
 
-    applying?.let { ApplyThemeDialog(it) { applying = null } }
-    if (saving) SaveThemeDialog(state) { saving = false }
-}
-
-/** A tall card that looks like a tiny phone in that preset: wallpaper, clock and icons. */
-@Composable
-private fun PresetCard(preset: ThemeConfig, apps: List<AppEntry>, selected: Boolean, onClick: () -> Unit) {
-    val app = LocalContext.current.veneer
-    val font = remember(preset.fontId) { app.fonts.family(preset.fontId) }
-    val sample = remember(apps) { apps.take(6) }
-    val ring = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
-    Column(Modifier.width(132.dp).clickable(onClick = onClick)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(212.dp)
-                .border(3.dp, ring, RoundedCornerShape(26.dp))
-                .padding(if (selected) 5.dp else 0.dp)
-                .clip(RoundedCornerShape(22.dp)),
-        ) {
-            WallpaperPreview(preset.wallpaper ?: WallpaperSpec(), Modifier.matchParentSize())
-            CompositionLocalProvider(LocalLauncherTheme provides preset) {
-                Column(Modifier.matchParentSize().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Spacer(Modifier.height(18.dp))
-                    Text("9:41", style = TextStyle(fontFamily = font, fontSize = 30.sp, color = Color(preset.labelColor)))
-                    Spacer(Modifier.weight(1f))
-                    sample.chunked(3).forEach { row ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            row.forEach { AppIcon(it, null, 28.dp) }
-                        }
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(30.dp)
-                            .clip(RoundedCornerShape(preset.dockCornerDp.coerceAtMost(15).dp))
-                            .background(Color(preset.dockBg)),
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(preset.name, style = TextStyle(fontFamily = font, fontSize = 15.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-        Text(
-            "${preset.iconShape.label} · ${preset.iconStyle.label}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
-    }
+    applying?.let { UseLookDialog(it) { applying = null } }
+    if (saving) SaveLookDialog(state) { saving = false }
 }
 
 @Composable
-internal fun ApplyThemeDialog(theme: ThemeConfig, onDismiss: () -> Unit) {
+private fun UseLookDialog(theme: ThemeConfig, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val app = context.veneer
     var withWallpaper by remember { mutableStateOf(theme.wallpaper != null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Use \"${theme.name}\"?") },
+        title = { Text("Switch to \"${theme.name}\"?") },
         text = {
             Column {
-                Text("Changes icons, fonts and colors. Your apps and widgets stay where they are.")
+                Text("Changes icons, fonts and colors back to how you saved them. Your apps and widgets stay where they are.")
                 if (theme.wallpaper != null) {
                     Spacer(Modifier.height(12.dp))
                     Row(
@@ -298,16 +272,16 @@ internal fun ApplyThemeDialog(theme: ThemeConfig, onDismiss: () -> Unit) {
                     }
                 }
                 onDismiss()
-            }) { Text("Apply") }
+            }) { Text("Switch") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
 @Composable
-private fun SaveThemeDialog(state: LauncherState, onDismiss: () -> Unit) {
+private fun SaveLookDialog(state: LauncherState, onDismiss: () -> Unit) {
     val app = LocalContext.current.veneer
-    var name by remember { mutableStateOf("My theme ${state.savedThemes.size + 1}") }
+    var name by remember { mutableStateOf("My look ${state.savedThemes.size + 1}") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Save this look") },
