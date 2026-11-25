@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import androidx.core.net.toUri
 import app.veneer.apps.AppEntry
+import app.veneer.data.IconFinish
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import app.veneer.data.LauncherState
@@ -346,6 +347,24 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
                     IconStyle.Grayscale -> NoteText("Every icon in black and white. Pairs well with a colorful wallpaper.")
                     IconStyle.Vibrant -> NoteText("Turns up the colors of every icon so they pop off the wallpaper.")
                     IconStyle.Original -> {}
+                }
+            }
+        }
+        item { SectionHeader("Finish") }
+        item {
+            SettingCard {
+                ChoiceRow(null, IconFinish.entries, theme.iconFinish, { it.label }) { f -> update { it.copy(iconFinish = f) } }
+                if (theme.iconFinish == IconFinish.Glass) {
+                    NoteText(
+                        if (theme.iconStyle == IconStyle.Themed) "Each symbol sits on a piece of glass in the glass color. Folders use the same glass."
+                        else "Each icon becomes glossy glass in its own colors. Pick the Themed style to put symbols on glass of one color.",
+                    )
+                    ColorRow("Glass color", theme.glassTint, "Also the color of folders", allowAlpha = false) { c -> update { it.copy(glassTint = c) } }
+                    IntSliderRow("See-through", theme.glassClarity, 0..90, { if (it == 0) "Solid" else "$it%" }) { v -> update { it.copy(glassClarity = v) } }
+                    IntSliderRow("Shine", theme.glassShine, 0..100, { "$it%" }) { v -> update { it.copy(glassShine = v) } }
+                    IntSliderRow("Depth", theme.glassDepth, 0..100, { "$it%" }) { v -> update { it.copy(glassDepth = v) } }
+                } else {
+                    NoteText("Glass puts every icon on a glossy 3D base with a light rim, a shine and a soft shadow.")
                 }
             }
         }

@@ -18,6 +18,7 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
+import app.veneer.data.IconFinish
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import kotlin.math.max
@@ -32,6 +33,11 @@ data class IconSpec(
     val themedBg: Int,
     val wrapLegacy: Boolean,
     val legacyBg: Int,
+    val finish: IconFinish = IconFinish.Flat,
+    val glassTint: Int = 0xFF232327.toInt(),
+    val glassClarity: Int = 10,
+    val glassShine: Int = 70,
+    val glassDepth: Int = 60,
 )
 
 enum class IconSource { App, Pack, Image }
@@ -45,6 +51,16 @@ object IconRenderer {
     }
 
     fun render(drawable: Drawable, source: IconSource, sizePx: Int, spec: IconSpec): Bitmap {
+        if (spec.finish == IconFinish.Glass) {
+            // With the Themed style the glass takes the place of the background color, so only the symbol is drawn flat.
+            val symbolOnly = spec.style == IconStyle.Themed && source == IconSource.App
+            val flat = renderFlat(drawable, source, sizePx, spec.copy(finish = IconFinish.Flat, themedBg = if (symbolOnly) Color.TRANSPARENT else spec.themedBg))
+            return GlassIcons.compose(flat, sizePx, spec, symbolOnly)
+        }
+        return renderFlat(drawable, source, sizePx, spec)
+    }
+
+    private fun renderFlat(drawable: Drawable, source: IconSource, sizePx: Int, spec: IconSpec): Bitmap {
         val size = sizePx.toFloat()
         val bitmap = createBitmap(sizePx, sizePx)
         val canvas = Canvas(bitmap)
@@ -126,7 +142,7 @@ object IconRenderer {
 
         val layer = createBitmap(sizePx, sizePx)
         val layerCanvas = Canvas(layer)
-        val plain = render(app, IconSource.App, sizePx, spec.copy(shape = IconShape.Original, style = IconStyle.Original))
+        val plain = render(app, IconSource.App, sizePx, spec.copy(shape = IconShape.Original, style = IconStyle.Original, finish = IconFinish.Flat))
         val scaled = (sizePx * pack.scale).roundToInt().coerceIn(1, sizePx)
         val offset = (sizePx - scaled) / 2
         layerCanvas.drawBitmap(plain, null, Rect(offset, offset, offset + scaled, offset + scaled), Paint(Paint.FILTER_BITMAP_FLAG))
@@ -145,7 +161,8 @@ object IconRenderer {
                 upon.draw(canvas)
             }
         }
-        return finish(result, spec.style)
+        val styled = finish(result, spec.style)
+        return if (spec.finish == IconFinish.Glass) GlassIcons.compose(styled, sizePx, spec, symbolOnly = false) else styled
     }
 
     /** Erases everything outside [path], with anti-aliased edges. */

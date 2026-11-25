@@ -36,6 +36,7 @@ import app.veneer.data.WidgetAlign
 import app.veneer.data.LauncherState
 import app.veneer.data.AppOverride
 import app.veneer.data.DOCK_PAGE
+import app.veneer.data.IconFinish
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import app.veneer.data.ItemContent
@@ -546,6 +547,50 @@ class ScreensTest {
         }
     }
 
+    /** Glass icons and a glass folder on a dark wallpaper, with purple symbols. */
+    @Test
+    fun glassHomeScreen() {
+        app.store.update { s ->
+            var next = s.copy(
+                theme = s.theme.copy(
+                    iconStyle = IconStyle.Themed, themedFg = 0xFFD54CFF.toInt(), iconFinish = IconFinish.Glass,
+                    glassTint = 0xFF232327.toInt(), glassClarity = 0, dockBg = 0x00000000, accent = 0xFFB23CFF.toInt(),
+                ),
+            )
+            val folder = ItemContent.Folder("Social", listOf(appContent("Messages"), appContent("Photos"), appContent("Music"), appContent("Mail")), null)
+            next = LayoutOps.addAt(next, folder, Spot(0, 0, 2), 1, 1)
+            next
+        }
+        launchHome().use {
+            compose.onNodeWithText("Social").assertExists()
+            settle()
+            shot("home-glass", WallpaperSpec(WallpaperStyle.Radial, 0xFF6E6E78.toInt(), 0xFF1C1C21.toInt()))
+            assertEquals(IconFinish.Glass, app.store.current.theme.iconFinish)
+        }
+    }
+
+    /** The island's settings: its preview in each state, and turning it on. */
+    @Test
+    fun islandSettingsPreviewEachState() {
+        app.store.update { it.copy(island = it.island.copy(background = 0xFF8A00E6.toInt(), accent = 0xFF3DDC84.toInt())) }
+        ActivityScenario.launch(CustomizeActivity::class.java).use {
+            compose.waitForIdle()
+            compose.onNode(hasScrollAction()).performScrollToNode(hasText("Island"))
+            compose.onNodeWithText("Island").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithTag("islandPreview").assertExists()
+            for ((chip, name) in listOf("Resting" to "idle", "Charging" to "charging", "Music" to "music", "Music, open" to "music-open", "Notification" to "notification")) {
+                compose.onAllNodesWithText(chip).onFirst().performClick()
+                compose.waitForIdle()
+                shot("island-$name", null)
+            }
+            compose.onNodeWithText("Show the island").performClick()
+            compose.waitForIdle()
+            assertTrue(app.store.current.island.enabled)
+            compose.onNodeWithText("Let Veneer draw over the status bar").assertExists()
+        }
+    }
+
     @Test
     fun shuffleImportsPicturesAndMovesToTheNextOne() {
         val pictures = (0 until 3).map { i ->
@@ -570,6 +615,41 @@ class ScreensTest {
             assertEquals(270, bmp.width)
             assertTrue("${photo.id} should be a real picture", Color.alpha(bmp.getPixel(135, 270)) == 255)
         }
+    }
+
+    /** A sheet of glass icons: several looks (rows) on the same apps (columns). */
+    @Test
+    fun glassIconsRender() {
+        val size = 168
+        val looks = listOf(
+            "Dark glass, purple symbols" to ThemeConfig(iconStyle = IconStyle.Themed, themedFg = 0xFFD54CFF.toInt(), iconFinish = IconFinish.Glass, glassTint = 0xFF232327.toInt(), glassClarity = 0),
+            "Clear glass, white symbols" to ThemeConfig(iconStyle = IconStyle.Themed, themedFg = 0xFFFFFFFF.toInt(), iconFinish = IconFinish.Glass, glassTint = 0xFFFFFFFF.toInt(), glassClarity = 75, glassDepth = 45),
+            "Full-color glass" to ThemeConfig(iconStyle = IconStyle.Original, iconFinish = IconFinish.Glass, glassClarity = 10),
+            "Circle, pink glass" to ThemeConfig(iconShape = IconShape.Circle, iconStyle = IconStyle.Themed, themedFg = 0xFFFFFFFF.toInt(), iconFinish = IconFinish.Glass, glassTint = 0xFFE64980.toInt(), glassClarity = 20),
+        )
+        val apps = listOf("Phone", "Messages", "Camera", "Photos", "Music", "Maps")
+        for ((_, theme) in looks) {
+            val bmp = IconRenderer.render(TestApps.icon("Maps"), IconSource.App, size, theme.iconSpec())
+            assertEquals(size, bmp.width)
+            assertTrue("glass body should be drawn", Color.alpha(bmp.getPixel(size / 2, size / 2)) > 200)
+        }
+        val dir = System.getProperty("screenshots.dir") ?: return
+        val cell = 200
+        val labelH = 56
+        val sheet = createBitmap(cell * apps.size + 40, looks.size * (cell + labelH) + 20)
+        val canvas = Canvas(sheet)
+        canvas.drawBitmap(Wallpapers.render(WallpaperSpec(WallpaperStyle.Diagonal, 0xFF3A3A40.toInt(), 0xFF8A8A92.toInt()), sheet.width, sheet.height), 0f, 0f, null)
+        val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; textSize = 30f }
+        looks.forEachIndexed { r, (label, theme) ->
+            val y = 20 + r * (cell + labelH)
+            canvas.drawText(label, 24f, y + 36f, text)
+            apps.forEachIndexed { c, app ->
+                val icon = IconRenderer.render(TestApps.icon(app), IconSource.App, size, theme.iconSpec())
+                canvas.drawBitmap(icon, 20f + c * cell + (cell - size) / 2f, y + labelH.toFloat(), null)
+            }
+        }
+        File(dir).mkdirs()
+        File(dir, "icon-glass.png").outputStream().use { sheet.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test

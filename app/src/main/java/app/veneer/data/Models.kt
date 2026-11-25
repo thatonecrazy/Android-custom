@@ -18,6 +18,13 @@ enum class IconShape(val label: String) {
     Hexagon("Hexagon"),
 }
 
+/** The surface each icon sits on. */
+@Serializable
+enum class IconFinish(val label: String) {
+    Flat("Flat"),
+    Glass("Glass"),
+}
+
 @Serializable
 enum class IconStyle(val label: String) {
     Original("Full color"),
@@ -111,6 +118,15 @@ data class ThemeConfig(
     val themedBg: Int = 0xFFDDE3FF.toInt(),
     val wrapLegacyIcons: Boolean = true,
     val legacyBg: Int = 0xFFFFFFFF.toInt(),
+    /** Glass puts every icon on a glossy 3D base with a light rim, a shine and a shadow. */
+    val iconFinish: IconFinish = IconFinish.Flat,
+    val glassTint: Int = 0xFF232327.toInt(),
+    /** How see-through the glass is, 0 (solid) to 90 percent. */
+    val glassClarity: Int = 10,
+    /** Strength of the shine and the bright rim, 0 to 100. */
+    val glassShine: Int = 70,
+    /** Strength of the shading and the shadow under the icon, 0 to 100. */
+    val glassDepth: Int = 60,
 
     // Labels and font
     val fontId: String = "system",
@@ -298,10 +314,11 @@ data class AppOverride(
     val style: IconStyle? = null,
     val iconFg: Int? = null,
     val iconBg: Int? = null,
+    val finish: IconFinish? = null,
     /** This app's name color on the home screen; null follows the theme. */
     val labelColor: Int? = null,
 ) {
-    val hasOwnLook: Boolean get() = shape != null || style != null || iconFg != null || iconBg != null
+    val hasOwnLook: Boolean get() = shape != null || style != null || iconFg != null || iconBg != null || finish != null
     val isEmpty: Boolean get() = label == null && icon == null && !hidden && !hasOwnLook && labelColor == null
 }
 
@@ -313,7 +330,31 @@ fun ThemeConfig.forApp(o: AppOverride?): ThemeConfig =
         iconStyle = o.style ?: iconStyle,
         themedFg = o.iconFg ?: themedFg,
         themedBg = o.iconBg ?: themedBg,
+        iconFinish = o.finish ?: iconFinish,
     )
+
+/** The island: a pill at the top of the screen that grows to show charging, music, notifications and alarms. */
+@Serializable
+data class IslandConfig(
+    val enabled: Boolean = false,
+    /** A small pill around the camera when nothing is happening; off hides the island until something happens. */
+    val idlePill: Boolean = true,
+    val charging: Boolean = true,
+    val music: Boolean = true,
+    val notifications: Boolean = true,
+    val alarms: Boolean = true,
+    val background: Int = 0xFF000000.toInt(),
+    /** Text and icons. */
+    val content: Int = 0xFFFFFFFF.toInt(),
+    /** The bolt, the music bars and the outline; null uses the theme's accent. */
+    val accent: Int? = null,
+    val outline: Boolean = false,
+    val widthDp: Int = 110,
+    val heightDp: Int = 32,
+    val offsetYDp: Int = 6,
+    val offsetXDp: Int = 0,
+    val popSeconds: Int = 4,
+)
 
 @Serializable
 data class LauncherState(
@@ -322,6 +363,7 @@ data class LauncherState(
     val items: List<HomeItem> = emptyList(),
     val overrides: Map<String, AppOverride> = emptyMap(),
     val savedThemes: List<ThemeConfig> = emptyList(),
+    val island: IslandConfig = IslandConfig(),
     val nextId: Long = 1,
     val firstRunDone: Boolean = false,
     val shuffle: WallpaperShuffle = WallpaperShuffle(),

@@ -20,7 +20,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 
-fun ThemeConfig.iconSpec() = IconSpec(iconShape, iconStyle, themedFg, themedBg, wrapLegacyIcons, legacyBg)
+fun ThemeConfig.iconSpec() = IconSpec(
+    iconShape, iconStyle, themedFg, themedBg, wrapLegacyIcons, legacyBg,
+    iconFinish, glassTint, glassClarity, glassShine, glassDepth,
+)
 
 /**
  * Produces finished icons for apps, applying icon packs, per-app overrides, shapes and styles,

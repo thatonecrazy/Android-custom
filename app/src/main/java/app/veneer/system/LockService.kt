@@ -4,23 +4,64 @@ import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
+import app.veneer.veneer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
- * Exists only so a home screen gesture can lock the phone, the one thing Android reserves for
- * accessibility services. It reads nothing on screen and ignores every event.
+ * Does the two things Android reserves for accessibility services: locking the phone from a home
+ * screen gesture, and drawing the island above the status bar. It reads nothing on screen and
+ * ignores every event.
  */
 class LockService : AccessibilityService() {
 
+    private var scope: CoroutineScope? = null
+    private var island: IslandOverlay? = null
+
     override fun onServiceConnected() {
         instance = this
+        val overlay = IslandOverlay(this)
+        island = overlay
+        scope?.cancel()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).apply {
+            launch {
+                veneer.store.state.map { it.island }.distinctUntilChanged().collect { config ->
+                    if (config.enabled) overlay.show(config) else overlay.hide()
+                }
+            }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        island?.refresh()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        instance = null
+        shutDown()
         return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        shutDown()
+        super.onDestroy()
+    }
+
+    private fun shutDown() {
+        instance = null
+        scope?.cancel()
+        scope = null
+        island?.hide()
+        island = null
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -38,6 +79,9 @@ class LockService : AccessibilityService() {
             val me = ComponentName(context, LockService::class.java)
             return enabled.split(':').any { ComponentName.unflattenFromString(it) == me }
         }
+
+        /** Whether the service is running right now (turned on and connected). */
+        val running: Boolean get() = instance != null
 
         /** Locks the screen. Returns false when the service isn't turned on yet. */
         fun lock(): Boolean {

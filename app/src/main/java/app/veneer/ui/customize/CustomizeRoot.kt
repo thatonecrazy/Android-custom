@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -100,6 +101,7 @@ enum class Section(val id: String, val title: String, val subtitle: String, val 
     HomeLayout("home", "Home screen", "Grid, dock, bars, gestures", Icons.Filled.Home, listOf(Vivid.Blue, Vivid.Violet)),
     Drawer("drawer", "App list", "Columns and labels", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
     Wallpaper("wallpaper", "Wallpaper", "Your photos, gradients", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
+    Island("island", "Island", "A live pill at the top", Icons.Filled.Smartphone, listOf(Vivid.Violet, Vivid.Blue)),
     Backup("backup", "Backup", "Saved looks, restore", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
     ;
 
@@ -158,6 +160,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
                         Section.HomeLayout -> HomeLayoutScreen(state, apps, back)
                         Section.Drawer -> DrawerScreen(state, apps, back)
                         Section.Wallpaper -> WallpaperScreen(state, apps, back)
+                        Section.Island -> IslandScreen(state, apps, back)
                         Section.Apps -> AppsScreen(state, apps, back) { editingAppId = it.key.id }
                         Section.Backup -> BackupScreen(state, back)
                     }

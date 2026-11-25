@@ -98,7 +98,7 @@ data class NowPlaying(
 )
 
 /** Follows whichever app is playing media and reports what's on. */
-private class NowPlayingWatcher(context: Context, private val onChange: (NowPlaying?) -> Unit) {
+internal class NowPlayingWatcher(context: Context, private val onChange: (NowPlaying?) -> Unit) {
     private val manager = context.getSystemService(MediaSessionManager::class.java)
     private val component = NotificationDotsService.component(context)
     private val handler = Handler(Looper.getMainLooper())
@@ -160,7 +160,7 @@ private class NowPlayingWatcher(context: Context, private val onChange: (NowPlay
 }
 
 @Composable
-private fun rememberNowPlaying(allowed: Boolean): State<NowPlaying?> {
+internal fun rememberNowPlaying(allowed: Boolean): State<NowPlaying?> {
     val context = LocalContext.current
     val state = remember { mutableStateOf<NowPlaying?>(null) }
     DisposableEffect(allowed) {

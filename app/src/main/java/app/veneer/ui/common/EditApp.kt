@@ -74,6 +74,7 @@ import app.veneer.apps.AppEntry
 import app.veneer.apps.normalizeForSearch
 import app.veneer.data.AppOverride
 import app.veneer.data.IconRef
+import app.veneer.data.IconFinish
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import app.veneer.data.forApp
@@ -228,6 +229,9 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
             ChoiceRow("Style", listOf<IconStyle?>(null) + IconStyle.entries, own.style, { it?.label ?: "Same as other apps" }) { v ->
                 app.store.updateOverride(entry.key.id) { it.copy(style = v) }
             }
+            ChoiceRow("Finish", listOf<IconFinish?>(null) + IconFinish.entries, own.finish, { it?.label ?: "Same as other apps" }) { v ->
+                app.store.updateOverride(entry.key.id) { it.copy(finish = v) }
+            }
 
             SectionHeader("Colors")
             val effective = theme.forApp(own)
@@ -253,7 +257,7 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
             if (own.hasOwnLook || own.labelColor != null) {
                 ClickRow("Match the other apps again", "Undo this app's shape, style and colors", icon = Icons.Filled.Refresh) {
                     app.store.updateOverride(entry.key.id) {
-                        it.copy(shape = null, style = null, iconFg = null, iconBg = null, labelColor = null)
+                        it.copy(shape = null, style = null, iconFg = null, iconBg = null, finish = null, labelColor = null)
                     }
                 }
             }

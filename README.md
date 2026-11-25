@@ -22,6 +22,10 @@ Six home screens made only with Veneer's settings. They are examples, not preset
 | ![Cozy](docs/screenshots/example-cozy.png) | ![Every app its own color](docs/screenshots/example-each-app.png) | ![Retro](docs/screenshots/example-retro.png) |
 | Lora serif, brown-on-cream icons, greeting, analog clock, month calendar, at a glance | Each app given its own icon color under Your apps; Music is also a circle | Square icons in terminal green, a pixel font, square dock and cards, a text widget |
 
+| Glass icons | Island: charging | Island: music |
+| --- | --- | --- |
+| ![Glass icons and folder](docs/screenshots/home-glass.png) | ![Island charging](docs/screenshots/island-charging.png) | ![Island music controls](docs/screenshots/island-music-open.png) |
+
 | Customize | Colors | One app's own look |
 | --- | --- | --- |
 | ![Customize](docs/screenshots/customize.png) | ![Colors](docs/screenshots/customize-colors.png) | ![Edit one app](docs/screenshots/edit-app-look.png) |
@@ -54,6 +58,12 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - Full color, extra vivid (turns up every icon's colors), grayscale, or themed: one-color symbols in your own two colors, using the one-color icons apps ship for Android 13 and newer, and a tinted logo for many apps that don't.
 - Icon size, and a matching background for old-style square icons.
 
+**Glass finish**
+- Puts every icon on a glossy 3D piece of glass: a soft shadow underneath, shading top to bottom, a reflection across the top and a bright rim.
+- Pick the glass color, how see-through it is, and how strong the shine and depth are. Folders turn to the same glass.
+- With the Themed style, symbols sit on glass of one color (for example purple symbols on dark glass). With full color, each icon becomes glass in its own colors.
+- Works for single apps too.
+
 **Each app on its own** (Customize → Your apps, or hold an app → Edit)
 - A new name, an icon from any pack, or your own picture as its icon.
 - Its own icon shape and style, different from the rest.
@@ -83,6 +93,15 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 - Dock with 3 to 7 apps, any color or opacity, any roundness, or no dock.
 - Darken the wallpaper, hide the status bar or pick light or dark status bar icons.
 - App list columns, background and text color.
+
+**Island**
+- A pill at the top of the screen, over every app, that grows to show what's happening:
+  - plugging in: a bolt and the battery level, with the pill filling up
+  - music: album art and moving bars; tap for the song and play controls
+  - new notifications: the app, who it's from and the message (on the lock screen only "New notification")
+  - alarms: a small bubble beside the pill when an alarm is set for the next 12 hours
+- Edit its background, text and highlight colors, a glowing outline, width, height and position. It centers itself on the front camera.
+- Turn off the resting pill to show the island only when something happens. It hides when the phone is sideways, for games and videos.
 
 **Colors**
 - One screen with every color: accent, app names and widget text, icon symbol and background, dock, app list. Or take them all from your wallpaper in one tap.
@@ -142,7 +161,7 @@ Veneer asks for these only when you turn on the feature that needs them:
 - **Calendar** for the calendar agenda and "at a glance" widgets.
 - **Approximate location** for the weather widgets, if you'd rather not pick a city. Only a rough position (rounded to about 1 km) is sent to [Open-Meteo](https://open-meteo.com), a free weather service that needs no account. Without it, weather works from the city you choose.
 - **Internet** is used only for the weather.
-- **Accessibility service** ("Veneer screen lock") only if you pick "Lock screen" for a gesture. Android reserves screen locking for accessibility services; this one reads nothing on screen.
+- **Accessibility service** ("Veneer") for the island, or if you pick "Lock screen" for a gesture. Android only lets accessibility services draw above the status bar and lock the screen; Veneer's reads nothing on screen.
 
 ## Building
 

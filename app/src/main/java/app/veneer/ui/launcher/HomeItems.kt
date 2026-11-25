@@ -74,6 +74,8 @@ import app.veneer.apps.AppKey
 import app.veneer.data.BuiltinKind
 import app.veneer.data.DOCK_PAGE
 import app.veneer.data.HomeItem
+import app.veneer.data.IconFinish
+import app.veneer.ui.common.glassSurface
 import app.veneer.data.IconShape
 import app.veneer.data.ItemContent
 import app.veneer.data.LauncherState
@@ -173,14 +175,25 @@ fun FolderTile(
         verticalArrangement = Arrangement.Center,
     ) {
         Box {
+            val glass = theme.iconFinish == IconFinish.Glass
             Box(
-                Modifier
-                    .size(iconSize)
-                    .clip(iconShapeOf(theme.iconShape))
-                    .background(folder.color?.let { Color(it).copy(alpha = 0.85f) } ?: Color.White.copy(alpha = 0.3f))
-                    .padding(iconSize * 0.12f),
+                if (glass) {
+                    // Same footprint as a glass icon: a little smaller than the icon square, leaving room for the shadow.
+                    Modifier
+                        .size(iconSize)
+                        .padding(start = iconSize * 0.07f, end = iconSize * 0.07f, top = iconSize * 0.035f, bottom = iconSize * 0.105f)
+                        .glassSurface(iconShapeOf(theme.iconShape), Color(folder.color ?: theme.glassTint), theme.glassClarity, theme.glassShine, theme.glassDepth)
+                        .padding(iconSize * 0.08f)
+                } else {
+                    Modifier
+                        .size(iconSize)
+                        .clip(iconShapeOf(theme.iconShape))
+                        .background(folder.color?.let { Color(it).copy(alpha = 0.85f) } ?: Color.White.copy(alpha = 0.3f))
+                        .padding(iconSize * 0.12f)
+                },
+                contentAlignment = Alignment.Center,
             ) {
-                val mini = (iconSize * 0.76f - 4.dp) / 2
+                val mini = if (glass) (iconSize * 0.70f - 4.dp) / 2 else (iconSize * 0.76f - 4.dp) / 2
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     folder.apps.take(4).chunked(2).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
