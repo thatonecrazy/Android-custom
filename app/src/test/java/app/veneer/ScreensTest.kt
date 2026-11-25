@@ -32,6 +32,9 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.veneer.data.BuiltinKind
+import app.veneer.data.WidgetAlign
+import app.veneer.data.LauncherState
+import app.veneer.data.AppOverride
 import app.veneer.data.DOCK_PAGE
 import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
@@ -413,6 +416,133 @@ class ScreensTest {
             compose.onAllNodes(isRoot()).onFirst().performTouchInput { swipeLeft() }
             compose.waitForIdle()
             shot("widgets-clocks", backdrop)
+        }
+    }
+
+    /**
+     * Six home screens built only from Veneer's own settings, to show what the app can do.
+     * These are examples for the README, not presets: the app ships none.
+     */
+    @Test
+    fun exampleSetups() {
+        val file = File(app.cacheDir, "example-photo.jpg")
+        Wallpapers.render(WallpaperSpec(photo = "mirror_sky"), 900, 1200, app).let { bmp ->
+            file.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        }
+        val photo = kotlinx.coroutines.runBlocking { WidgetPhotos.save(app, android.net.Uri.fromFile(file)) }
+        app.weather.setForPreview(WeatherNow(18, 21, 12, 2, true, false, "Lisbon", System.currentTimeMillis()))
+        @Suppress("DEPRECATION")
+        app.sendStickyBroadcast(
+            android.content.Intent(android.content.Intent.ACTION_BATTERY_CHANGED)
+                .putExtra(android.os.BatteryManager.EXTRA_LEVEL, 76)
+                .putExtra(android.os.BatteryManager.EXTRA_SCALE, 100),
+        )
+        ShadowLooper.idleMainLooper()
+
+        fun w(kind: BuiltinKind, tweak: (WidgetStyle) -> WidgetStyle = { it }) = ItemContent.Builtin(kind, tweak(HomeController.defaultStyle(kind)))
+        fun LauncherState.widget(content: ItemContent.Builtin, x: Int, y: Int, sx: Int, sy: Int) = LayoutOps.addAt(this, content, Spot(0, x, y), sx, sy)
+        fun LauncherState.appRow(y: Int, vararg labels: String): LauncherState {
+            var n = this
+            labels.forEachIndexed { i, l -> n = LayoutOps.addAt(n, appContent(l), Spot(0, i, y), 1, 1) }
+            return n
+        }
+        fun start(theme: ThemeConfig, dock: List<String> = listOf("Phone", "Messages", "Browser", "Camera")): LauncherState {
+            var n = app.store.current.copy(
+                items = emptyList(), pageCount = 1, overrides = emptyMap(), theme = theme,
+                weather = WeatherSettings(useDeviceLocation = false, fahrenheit = false),
+            )
+            dock.forEachIndexed { i, l -> n = LayoutOps.addAt(n, appContent(l), Spot(DOCK_PAGE, i, 0), 1, 1) }
+            return n
+        }
+        val id = app.apps.apps.value.associate { it.label to it.key.id }
+        val lightGlass: (WidgetStyle) -> WidgetStyle = { it.copy(background = 0x59FFFFFF, border = true, cornerDp = 28) }
+        val darkGlass: (WidgetStyle) -> WidgetStyle = { it.copy(background = 0x40000000, border = true, cornerDp = 28) }
+
+        val examples = listOf(
+            "minimal" to WallpaperSpec(WallpaperStyle.Solid, 0xFF121316.toInt(), 0xFF121316.toInt()) to {
+                start(ThemeConfig(
+                    iconShape = IconShape.Circle, iconStyle = IconStyle.Themed, themedFg = 0xFFE6E6E6.toInt(), themedBg = 0xFF26272B.toInt(),
+                    showHomeLabels = false, fontId = "inter", labelColor = 0xFFEDEDED.toInt(), labelShadow = false,
+                    dockBg = 0x00000000, pageIndicator = false, accent = 0xFFBDBDBD.toInt(),
+                ))
+                    .widget(w(BuiltinKind.Clock) { it.copy(sizeSp = 104) }, 0, 0, 4, 2)
+                    .widget(w(BuiltinKind.Date) { it.copy(sizeSp = 16, uppercase = true) }, 0, 2, 4, 1)
+                    .appRow(4, "Calendar", "Maps", "Mail", "Notes")
+                    .widget(w(BuiltinKind.Search) { it.copy(background = 0x1AFFFFFF) }, 0, 5, 4, 1)
+            },
+            "pastel" to WallpaperSpec(WallpaperStyle.Vertical, 0xFFFFD6E5.toInt(), 0xFFD9CCFF.toInt(), 0xFFC5EBFF.toInt()) to {
+                start(ThemeConfig(
+                    iconShape = IconShape.Teardrop, iconStyle = IconStyle.Themed, themedFg = 0xFFD6336C.toInt(), themedBg = 0xFFFFF0F5.toInt(),
+                    fontId = "quicksand", labelBold = true, labelColor = 0xFF5A2440.toInt(), labelShadow = false,
+                    dockBg = 0x66FFFFFF, accent = 0xFFE64980.toInt(),
+                ))
+                    .widget(w(BuiltinKind.Photo) { it.copy(image = photo, cornerDp = 36) }, 0, 0, 4, 2)
+                    .widget(w(BuiltinKind.Weather, lightGlass), 0, 2, 2, 2)
+                    .widget(w(BuiltinKind.MonthCalendar, lightGlass), 2, 2, 2, 2)
+                    .appRow(4, "Photos", "Music", "Notes", "Weather")
+                    .widget(w(BuiltinKind.Search) { it.copy(background = 0x80FFFFFF.toInt()) }, 0, 5, 4, 1)
+            },
+            "neon" to WallpaperSpec(WallpaperStyle.Aurora, 0xFF0A0614.toInt(), 0xFFFF00C8.toInt(), 0xFF00E5FF.toInt()) to {
+                start(ThemeConfig(
+                    iconShape = IconShape.Hexagon, iconStyle = IconStyle.Vibrant, fontId = "orbitron",
+                    labelColor = 0xFF9CFBFF.toInt(), dockBg = 0x3300E5FF, accent = 0xFF00E5FF.toInt(),
+                ))
+                    .widget(w(BuiltinKind.FlipClock, darkGlass), 0, 0, 4, 2)
+                    .widget(w(BuiltinKind.Battery) { it.copy(variant = 1) }, 0, 2, 2, 2)
+                    .widget(w(BuiltinKind.Weather, darkGlass), 2, 2, 2, 2)
+                    .appRow(4, "Music", "Videos", "Photos", "Store")
+                    .appRow(5, "Maps", "Mail", "Files", "Settings")
+            },
+            "cozy" to WallpaperSpec(WallpaperStyle.Vertical, 0xFFF6EFE3.toInt(), 0xFFE6D6BD.toInt()) to {
+                start(ThemeConfig(
+                    iconShape = IconShape.RoundedSquare, iconStyle = IconStyle.Themed, themedFg = 0xFF6B4F3A.toInt(), themedBg = 0xFFFBF6EE.toInt(),
+                    fontId = "lora", labelColor = 0xFF4A3426.toInt(), labelShadow = false,
+                    dockBg = 0x66FFFFFF, accent = 0xFFA0522D.toInt(),
+                ))
+                    .widget(w(BuiltinKind.Greeting), 0, 0, 4, 1)
+                    .widget(w(BuiltinKind.AnalogClock), 0, 1, 2, 2)
+                    .widget(w(BuiltinKind.MonthCalendar), 2, 1, 2, 2)
+                    .widget(w(BuiltinKind.Glance), 0, 3, 4, 1)
+                    .appRow(4, "Notes", "Calendar", "Mail", "Files")
+                    .appRow(5, "Photos", "Music", "Maps", "Weather")
+            },
+            "each-app" to WallpaperSpec(WallpaperStyle.Diagonal, 0xFF1B1B2F.toInt(), 0xFF35355A.toInt()) to {
+                val colors = mapOf(
+                    "Calendar" to 0xFFFF6B6B, "Maps" to 0xFFFFA94D, "Weather" to 0xFFFCC419, "Notes" to 0xFF69DB7C,
+                    "Photos" to 0xFF38D9A9, "Music" to 0xFF4DABF7, "Mail" to 0xFF748FFC, "Files" to 0xFFDA77F2,
+                    "Phone" to 0xFF51CF66, "Messages" to 0xFF339AF0, "Browser" to 0xFFFF922B, "Camera" to 0xFFF06595,
+                )
+                start(ThemeConfig(iconShape = IconShape.Squircle, iconStyle = IconStyle.Themed, fontId = "outfit"))
+                    .widget(w(BuiltinKind.ClockDate), 0, 0, 4, 2)
+                    .appRow(3, "Calendar", "Maps", "Weather", "Notes")
+                    .appRow(4, "Photos", "Music", "Mail", "Files")
+                    .widget(w(BuiltinKind.Search), 0, 5, 4, 1)
+                    .copy(overrides = colors.mapKeys { id.getValue(it.key) }.mapValues { (_, c) ->
+                        AppOverride(iconBg = c.toInt(), iconFg = 0xFFFFFFFF.toInt())
+                    } + (id.getValue("Music") to AppOverride(iconBg = 0xFF4DABF7.toInt(), iconFg = 0xFFFFFFFF.toInt(), shape = IconShape.Circle)))
+            },
+            "retro" to WallpaperSpec(WallpaperStyle.Solid, 0xFF0B140B.toInt(), 0xFF0B140B.toInt()) to {
+                start(ThemeConfig(
+                    iconShape = IconShape.Square, iconStyle = IconStyle.Themed, themedFg = 0xFF33FF66.toInt(), themedBg = 0xFF10261A.toInt(),
+                    fontId = "pixel", labelSizeSp = 8, labelColor = 0xFF33FF66.toInt(), labelShadow = false,
+                    dockBg = 0xFF10261A.toInt(), dockCornerDp = 0, accent = 0xFF33FF66.toInt(),
+                ))
+                    .widget(w(BuiltinKind.Text) { it.copy(text = "> HELLO_", sizeSp = 16, align = WidgetAlign.Start) }, 0, 0, 4, 1)
+                    .widget(w(BuiltinKind.Clock) { it.copy(sizeSp = 56) }, 0, 1, 4, 2)
+                    .widget(w(BuiltinKind.Battery) { it.copy(sizeSp = 20, background = 0xFF10261A.toInt(), cornerDp = 0) }, 0, 3, 4, 1)
+                    .appRow(4, "Notes", "Files", "Settings", "Mail")
+                    .appRow(5, "Music", "Maps", "Store", "Weather")
+            },
+        )
+        launchHome().use {
+            for ((pair, build) in examples) {
+                val (name, wallpaper) = pair
+                app.store.update { build() }
+                settle()
+                compose.waitUntil(10_000) { compose.onAllNodesWithText("Tap to pick a photo").fetchSemanticsNodes().isEmpty() }
+                settle()
+                shot("example-$name", wallpaper)
+            }
         }
     }
 

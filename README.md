@@ -8,6 +8,20 @@ There are no ready-made themes. Everything starts plain, and you build your own 
 | --- | --- | --- | --- | --- | --- |
 | ![Start](docs/screenshots/home-default.png) | ![Teardrop icons](docs/screenshots/step-1-shape.png) | ![Themed icons in pink](docs/screenshots/step-2-icon-colors.png) | ![Quicksand font](docs/screenshots/step-3-font.png) | ![Text and dock colors](docs/screenshots/step-4-colors.png) | ![Maps and Music with their own look](docs/screenshots/step-5-single-apps.png) |
 
+### Examples of what you can build
+
+Six home screens made only with Veneer's settings. They are examples, not presets: the app doesn't ship any.
+
+| Minimal | Pastel | Neon |
+| --- | --- | --- |
+| ![Minimal](docs/screenshots/example-minimal.png) | ![Pastel](docs/screenshots/example-pastel.png) | ![Neon](docs/screenshots/example-neon.png) |
+| Circle icons in one gray, names hidden, Inter, plain dark wallpaper, see-through dock | Teardrop icons in pink, Quicksand bold, your photo in a widget, glass weather and calendar | Hexagon icons in extra-vivid color, Orbitron, flip clock, battery ring, cyan accent |
+
+| Cozy | Every app its own color | Retro |
+| --- | --- | --- |
+| ![Cozy](docs/screenshots/example-cozy.png) | ![Every app its own color](docs/screenshots/example-each-app.png) | ![Retro](docs/screenshots/example-retro.png) |
+| Lora serif, brown-on-cream icons, greeting, analog clock, month calendar, at a glance | Each app given its own icon color under Your apps; Music is also a circle | Square icons in terminal green, a pixel font, square dock and cards, a text widget |
+
 | Customize | Colors | One app's own look |
 | --- | --- | --- |
 | ![Customize](docs/screenshots/customize.png) | ![Colors](docs/screenshots/customize-colors.png) | ![Edit one app](docs/screenshots/edit-app-look.png) |

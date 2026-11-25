@@ -421,7 +421,7 @@ fun FlipClockWidget(style: WidgetStyle, base: TextStyle, textColor: Color) {
 fun BatteryRing(percent: Int, charging: Boolean, base: TextStyle, sizeSp: Int, textColor: Color) {
     val accent = Color(LocalLauncherTheme.current.accent)
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().aspectRatio(1f, matchHeightConstraintsFirst = true)) {
+        Canvas(Modifier.aspectRatio(1f)) {
             val stroke = size.minDimension * 0.09f
             val inset = stroke / 2
             drawArc(textColor.copy(alpha = 0.18f), 0f, 360f, false, Offset(inset, inset), androidx.compose.ui.geometry.Size(size.minDimension - stroke, size.minDimension - stroke), style = Stroke(stroke))
