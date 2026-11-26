@@ -2,7 +2,9 @@ package app.veneer
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
+import android.app.ActivityOptions
 import android.content.Intent
+import android.graphics.Rect
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -88,7 +90,12 @@ class MainActivity : ComponentActivity(), LauncherActions {
         }
     }
 
-    override fun launch(key: AppKey) = veneer.apps.launch(key)
+    override fun launch(key: AppKey, bounds: Rect?) {
+        val options = bounds?.takeIf { !it.isEmpty }?.let {
+            ActivityOptions.makeClipRevealAnimation(window.decorView, it.left, it.top, it.width(), it.height()).toBundle()
+        }
+        veneer.apps.launch(key, bounds, options)
+    }
 
     override fun addSystemWidget(info: AppWidgetProviderInfo) {
         val id = widgetHost.allocateId()

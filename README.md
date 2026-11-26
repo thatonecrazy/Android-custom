@@ -53,10 +53,16 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 ## What you can change
 
 **Icons**
-- Any icon pack in the common ADW/Nova format (most packs on the Play Store), including packs that theme apps they don't cover.
-- Eight shapes: system, circle, squircle, rounded, square, teardrop, leaf, hexagon.
-- Full color, extra vivid (turns up every icon's colors), grayscale, or themed: one-color symbols in your own two colors, using the one-color icons apps ship for Android 13 and newer, and a tinted logo for many apps that don't.
-- Icon size, and a matching background for old-style square icons.
+- Thirteen shapes: system, circle, squircle, rounded (with a roundness slider), square, teardrop, leaf, hexagon, pebble, octagon, flower, arch and diamond.
+- Seven styles, each shown on your own apps before you pick: full color, extra vivid, themed (one symbol color on one background), tinted (each app's own soft color with a deep symbol), color symbols (each app's symbol in its own color on your background), pastel and grayscale.
+- Backgrounds from solid to clear, and a two-color gradient for themed and color-symbol icons.
+- An outline in any color and thickness, a soft shadow, and a symbol size that zooms the picture inside its shape.
+- A color tint that pulls every icon toward one color, from a hint to fully matched.
+- Notification dots in any color, with the number of waiting notifications if you like.
+- Icon size, any icon pack in the common ADW/Nova format (most packs on the Play Store), and a matching background for old-style square icons.
+- Restyling is quick: each app's original icon is kept in memory, nearby sizes share one drawing, and the home screen redraws once when you come back instead of with every change. New looks fade in with a small bounce.
+
+![Newer icon options](docs/screenshots/icon-options.png)
 
 **Glass finish**
 - Puts every icon on a glossy 3D piece of glass: a soft shadow underneath, shading top to bottom, a reflection across the top and a bright rim.
@@ -66,7 +72,7 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 
 **Each app on its own** (Customize → Your apps, or hold an app → Edit)
 - A new name, an icon from any pack, or your own picture as its icon.
-- Its own icon shape and style, different from the rest.
+- Its own icon shape, style and finish, different from the rest.
 - Its own icon colors: the app's symbol in one color on a background of another.
 - Its own name color on the home screen.
 - Hide it from the app list.

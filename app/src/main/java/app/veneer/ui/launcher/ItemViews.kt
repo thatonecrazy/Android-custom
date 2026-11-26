@@ -3,6 +3,24 @@ package app.veneer.ui.launcher
 import android.appwidget.AppWidgetHostView
 import android.view.ViewGroup
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.IntSize
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.withStarted
+import app.veneer.icons.IconProvider
+import app.veneer.icons.iconSpec
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -50,6 +68,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -78,49 +97,114 @@ import app.veneer.widgets.WidgetHost
 val LocalNotificationCounts = compositionLocalOf<Map<String, Int>> { emptyMap() }
 
 /** The small dot at the top corner of an icon that has notifications. */
+/** A notification dot in the chosen dot color, showing the number when that's turned on. Pops in when it appears. */
 @Composable
-fun NotificationDot(iconSize: Dp, modifier: Modifier = Modifier) {
+fun NotificationDot(iconSize: Dp, count: Int, modifier: Modifier = Modifier) {
     val theme = LocalLauncherTheme.current
-    val size = (iconSize * 0.26f).coerceIn(9.dp, 16.dp)
+    val color = Color(theme.dotColor ?: theme.accent)
+    val withNumber = theme.dotCount && count > 0
+    val size = if (withNumber) (iconSize * 0.36f).coerceIn(16.dp, 22.dp) else (iconSize * 0.26f).coerceIn(9.dp, 16.dp)
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 520f)) }
     Box(
         modifier
             .offset(x = size * 0.15f, y = -size * 0.15f)
+            .graphicsLayer { scaleX = appear.value; scaleY = appear.value }
             .size(size)
             .clip(CircleShape)
             .background(Color.White)
             .padding(1.5.dp)
             .clip(CircleShape)
-            .background(Color(theme.accent)),
-    )
+            .background(color),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (withNumber) {
+            Text(
+                if (count > 99) "99+" else count.toString(),
+                color = if (color.luminance() > 0.6f) Color.Black else Color.White,
+                fontSize = (size.value * (if (count > 9) 0.42f else 0.55f)).sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+        }
+    }
 }
 
-/** An app icon rendered with the current theme. Shows nothing until the icon is ready. */
+/** Where something was last drawn, in window pixels, so an app can open out of its icon. */
+class LaunchBounds {
+    var rect: android.graphics.Rect? = null
+}
+
+fun Modifier.recordBounds(holder: LaunchBounds): Modifier = onGloballyPositioned { coords ->
+    val r = coords.boundsInWindow()
+    holder.rect = android.graphics.Rect(r.left.roundToInt(), r.top.roundToInt(), r.right.roundToInt(), r.bottom.roundToInt())
+}
+
 /** Every app's own changes (shape, style, colors), so any icon anywhere can draw itself the way its app was set up. */
 val LocalAppLooks = compositionLocalOf<Map<String, AppOverride>> { emptyMap() }
 
+/**
+ * An app icon rendered with the current theme. While a restyled icon is being drawn the old one
+ * stays up, then the new one fades in with a small bounce. Size changes glide.
+ */
 @Composable
 fun AppIcon(entry: AppEntry?, override: IconRef?, size: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val provider = context.veneer.icons
     val theme = LocalLauncherTheme.current.forApp(entry?.let { LocalAppLooks.current[it.key.id] })
+    val shownSize by animateDpAsState(size, spring(stiffness = Spring.StiffnessMediumLow), label = "iconSize")
     val sizePx = with(LocalDensity.current) { size.roundToPx() }.coerceAtLeast(1)
     val version by provider.version.collectAsState()
     if (entry == null) {
-        Box(modifier.size(size).clip(RoundedCornerShape(size / 4)).background(Color(0x40FFFFFF)))
+        Box(modifier.size(shownSize).clip(RoundedCornerShape(shownSize / 4)).background(Color(0x40FFFFFF)))
         return
     }
+    val spec = theme.iconSpec()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val icon by produceState(
         initialValue = provider.cached(entry, override, theme, sizePx),
-        entry.key, override, theme.iconPack, theme.iconShape, theme.iconStyle, theme.themedFg, theme.themedBg,
-        theme.wrapLegacyIcons, theme.legacyBg, sizePx, version,
+        entry.key, override, theme.iconPack, spec, IconProvider.bucket(sizePx), version,
     ) {
+        val ready = provider.cached(entry, override, theme, sizePx)
+        if (ready != null) {
+            value = ready
+            return@produceState
+        }
+        // A screen in the background (the home screen while you're in Customize) waits until it's seen again.
+        lifecycle.withStarted { }
         value = provider.appIcon(entry, override, theme, sizePx)
     }
-    val bitmap = icon
-    if (bitmap != null) {
-        Image(bitmap = bitmap, contentDescription = null, modifier = modifier.size(size))
-    } else {
-        Spacer(modifier.size(size))
+    IconImage(icon, shownSize, modifier)
+}
+
+/** Draws an icon bitmap at [size]; a new bitmap fades in over the old one, and a restyle bounces. */
+@Composable
+private fun IconImage(bitmap: ImageBitmap?, size: Dp, modifier: Modifier) {
+    var current by remember { mutableStateOf(bitmap) }
+    var previous by remember { mutableStateOf<ImageBitmap?>(null) }
+    val fade = remember { Animatable(1f) }
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(bitmap) {
+        if (bitmap == null || bitmap === current) return@LaunchedEffect
+        val restyle = current != null
+        previous = current
+        current = bitmap
+        fade.snapTo(0f)
+        coroutineScope {
+            launch { fade.animateTo(1f, tween(if (restyle) 260 else 160)) }
+            if (restyle) {
+                launch {
+                    pop.snapTo(0.86f)
+                    pop.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = 380f))
+                }
+            }
+        }
+        previous = null
+    }
+    Canvas(modifier.size(size).graphicsLayer { scaleX = pop.value; scaleY = pop.value }) {
+        val dst = IntSize(this.size.width.roundToInt().coerceAtLeast(1), this.size.height.roundToInt().coerceAtLeast(1))
+        previous?.let { drawImage(it, dstSize = dst, alpha = 1f - fade.value, filterQuality = FilterQuality.Medium) }
+        current?.let { drawImage(it, dstSize = dst, alpha = fade.value, filterQuality = FilterQuality.Medium) }
     }
 }
 
@@ -159,7 +243,8 @@ fun AppTile(
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, label = "press")
     val theme = LocalLauncherTheme.current
     val counts = LocalNotificationCounts.current
-    val hasDot = theme.notificationDots && entry != null && (counts["${entry.packageName}#${entry.key.userSerial}"] ?: 0) > 0
+    val count = if (entry != null) counts["${entry.packageName}#${entry.key.userSerial}"] ?: 0 else 0
+    val hasDot = theme.notificationDots && count > 0
     Column(
         modifier.graphicsLayer { scaleX = scale; scaleY = scale },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -167,7 +252,7 @@ fun AppTile(
     ) {
         Box {
             AppIcon(entry, override, iconSize)
-            if (hasDot) NotificationDot(iconSize, Modifier.align(Alignment.TopEnd))
+            if (hasDot) NotificationDot(iconSize, count, Modifier.align(Alignment.TopEnd))
         }
         if (showLabel) {
             Spacer(Modifier.height(4.dp))

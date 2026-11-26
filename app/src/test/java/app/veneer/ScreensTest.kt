@@ -350,7 +350,8 @@ class ScreensTest {
             shot("customize", wallpaper)
 
             compose.onNodeWithText("Icons").performClick()
-            compose.onNodeWithText("Icon pack").assertExists()
+            compose.onNodeWithTag("styles").assertExists()
+            compose.onNodeWithText("Tinted").assertExists()
             shot("customize-icons", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
@@ -650,6 +651,46 @@ class ScreensTest {
         }
         File(dir).mkdirs()
         File(dir, "icon-glass.png").outputStream().use { sheet.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    /** Rows of the newer icon options: each row changes one thing, on the same apps. */
+    @Test
+    fun iconOptionsRender() {
+        val size = 150
+        val dark = ThemeConfig(iconStyle = IconStyle.Themed, themedFg = 0xFFFFFFFF.toInt(), themedBg = 0xFF2B2B33.toInt())
+        val rows = listOf(
+            "New shapes" to listOf(IconShape.Pebble, IconShape.Octagon, IconShape.Flower, IconShape.Arch, IconShape.Diamond, IconShape.RoundedSquare)
+                .mapIndexed { i, shape -> ThemeConfig(iconShape = shape, iconCorner = if (i == 5) 70 else 44) },
+            "Tinted" to List(6) { ThemeConfig(iconStyle = IconStyle.Tinted) },
+            "Color symbols on a gradient" to List(6) { ThemeConfig(iconStyle = IconStyle.ColorSymbols, themedBg = 0xFF1B1B2F.toInt(), themedBg2 = 0xFF3A1D5C.toInt()) },
+            "Pastel" to List(6) { ThemeConfig(iconStyle = IconStyle.Pastel) },
+            "Outline and shadow" to List(6) { ThemeConfig(iconShape = IconShape.Circle, iconOutline = 40, iconShadow = 70) },
+            "See-through background" to List(6) { ThemeConfig(iconStyle = IconStyle.Themed, themedFg = 0xFFFFFFFF.toInt(), themedBg = 0xFF000000.toInt(), iconBgOpacity = 35, iconOutline = 25) },
+            "Tinted toward purple" to List(6) { ThemeConfig(iconTint = 0xFFB23CFF.toInt(), iconTintStrength = 70) },
+            "Bigger symbols" to List(6) { dark.copy(iconScale = 125) },
+        )
+        val apps = listOf("Phone", "Messages", "Photos", "Music", "Maps", "Weather")
+        for ((_, themes) in rows) for ((i, theme) in themes.withIndex()) {
+            val bmp = IconRenderer.render(TestApps.icon(apps[i]), IconSource.App, size, theme.iconSpec())
+            assertTrue("icon should be drawn", Color.alpha(bmp.getPixel(size / 2, size / 2)) > 0)
+        }
+        val dir = System.getProperty("screenshots.dir") ?: return
+        val cell = 180
+        val labelH = 50
+        val sheet = createBitmap(cell * apps.size + 40, rows.size * (cell + labelH) + 20)
+        val canvas = Canvas(sheet)
+        canvas.drawBitmap(Wallpapers.render(WallpaperSpec(WallpaperStyle.Diagonal, 0xFF3B3B6D.toInt(), 0xFF9A6FB0.toInt()), sheet.width, sheet.height), 0f, 0f, null)
+        val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; textSize = 28f }
+        rows.forEachIndexed { r, (label, themes) ->
+            val y = 20 + r * (cell + labelH)
+            canvas.drawText(label, 24f, y + 32f, text)
+            themes.forEachIndexed { c, theme ->
+                val icon = IconRenderer.render(TestApps.icon(apps[c]), IconSource.App, size, theme.iconSpec())
+                canvas.drawBitmap(icon, 20f + c * cell + (cell - size) / 2f, y + labelH.toFloat(), null)
+            }
+        }
+        File(dir).mkdirs()
+        File(dir, "icon-options.png").outputStream().use { sheet.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test

@@ -90,8 +90,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** The theme's icon shape as a Compose shape, so folders match the icons around them. */
-fun iconShapeOf(shape: IconShape): Shape = GenericShape { size, _ ->
-    val path = IconShapes.path(shape, min(size.width, size.height))
+fun iconShapeOf(shape: IconShape, corner: Int = 44): Shape = GenericShape { size, _ ->
+    val path = IconShapes.path(shape, min(size.width, size.height), corner)
     if (path != null) addPath(path.asComposePath()) else addRoundRect(
         androidx.compose.ui.geometry.RoundRect(0f, 0f, size.width, size.height, size.width * 0.3f, size.height * 0.3f),
     )
@@ -113,7 +113,8 @@ fun HomeItemView(
             val entry = appMap[content.id]
             val override = state.overrides[content.id]
             val label = override?.label ?: entry?.label ?: ""
-            ItemFrame(item, controller, modifier, onClick = { entry?.let { actions.launch(it.key) } }) { pressed ->
+            val bounds = remember { LaunchBounds() }
+            ItemFrame(item, controller, modifier.recordBounds(bounds), onClick = { entry?.let { actions.launch(it.key, bounds.rect) } }) { pressed ->
                 AppTile(entry, label, override?.icon, iconSize, showLabel, Color(override?.labelColor ?: state.theme.labelColor), pressed = pressed)
                 ItemMenu(item, controller, actions, entry)
             }
@@ -165,9 +166,8 @@ fun FolderTile(
 ) {
     val theme = state.theme
     val counts = LocalNotificationCounts.current
-    val hasDot = theme.notificationDots && folder.apps.any { a ->
-        appMap[a.id]?.let { (counts["${it.packageName}#${it.key.userSerial}"] ?: 0) > 0 } == true
-    }
+    val count = folder.apps.sumOf { a -> appMap[a.id]?.let { counts["${it.packageName}#${it.key.userSerial}"] } ?: 0 }
+    val hasDot = theme.notificationDots && count > 0
     val scale = if (pressed) 0.92f else 1f
     Column(
         Modifier.graphicsLayer { scaleX = scale; scaleY = scale },
@@ -182,12 +182,12 @@ fun FolderTile(
                     Modifier
                         .size(iconSize)
                         .padding(start = iconSize * 0.07f, end = iconSize * 0.07f, top = iconSize * 0.035f, bottom = iconSize * 0.105f)
-                        .glassSurface(iconShapeOf(theme.iconShape), Color(folder.color ?: theme.glassTint), theme.glassClarity, theme.glassShine, theme.glassDepth)
+                        .glassSurface(iconShapeOf(theme.iconShape, theme.iconCorner), Color(folder.color ?: theme.glassTint), theme.glassClarity, theme.glassShine, theme.glassDepth)
                         .padding(iconSize * 0.08f)
                 } else {
                     Modifier
                         .size(iconSize)
-                        .clip(iconShapeOf(theme.iconShape))
+                        .clip(iconShapeOf(theme.iconShape, theme.iconCorner))
                         .background(folder.color?.let { Color(it).copy(alpha = 0.85f) } ?: Color.White.copy(alpha = 0.3f))
                         .padding(iconSize * 0.12f)
                 },
@@ -204,7 +204,7 @@ fun FolderTile(
                     }
                 }
             }
-            if (hasDot) NotificationDot(iconSize, Modifier.align(Alignment.TopEnd))
+            if (hasDot) NotificationDot(iconSize, count, Modifier.align(Alignment.TopEnd))
         }
         if (showLabel) {
             Spacer(Modifier.height(4.dp))
@@ -276,12 +276,14 @@ fun FolderPopup(controller: HomeController, actions: LauncherActions, state: Lau
                     row.forEach { app ->
                         val entry = appMap[app.id]
                         val override = state.overrides[app.id]
+                        val bounds = remember { LaunchBounds() }
                         Box(
                             Modifier
                                 .weight(1f)
+                                .recordBounds(bounds)
                                 .combinedClickable(
                                     onClick = {
-                                        entry?.let { actions.launch(it.key) }
+                                        entry?.let { actions.launch(it.key, bounds.rect) }
                                         close()
                                     },
                                     onLongClick = { menuFor = app.id },

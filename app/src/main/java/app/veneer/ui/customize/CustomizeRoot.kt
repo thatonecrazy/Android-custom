@@ -1,5 +1,20 @@
 package app.veneer.ui.customize
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -128,6 +143,13 @@ fun ThemeConfig.withLookOf(other: ThemeConfig) = other.copy(
     notificationDots = notificationDots,
 )
 
+/** How deep a Customize page is: the menu, a section, or one app inside Your apps. */
+private fun depth(page: Pair<String?, String?>): Int = when {
+    page.second != null -> 2
+    page.first != null -> 1
+    else -> 0
+}
+
 @Composable
 fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
     val app = LocalContext.current.veneer
@@ -137,12 +159,22 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
     val font = remember(state.theme.fontId, imported) { app.fonts.family(state.theme.fontId) }
     var sectionId by rememberSaveable { mutableStateOf(initialSection) }
     var editingAppId by rememberSaveable { mutableStateOf<String?>(null) }
-    val section = Section.from(sectionId)
-
     SettingsTheme(state.theme, font) {
       CompositionLocalProvider(LocalAppLooks provides state.overrides) {
       Box(Modifier.fillMaxSize()) {
-        val editing = editingAppId?.let { id -> apps.firstOrNull { it.key.id == id } }
+        // Pages slide in from the right going deeper and back out to the right going back.
+        AnimatedContent(
+            targetState = sectionId to editingAppId,
+            transitionSpec = {
+                val deeper = depth(targetState) >= depth(initialState)
+                val enter = slideInHorizontally(tween(320)) { w -> if (deeper) w / 3 else -w / 6 } + fadeIn(tween(240))
+                val exit = slideOutHorizontally(tween(320)) { w -> if (deeper) -w / 6 else w / 3 } + fadeOut(tween(180))
+                (enter togetherWith exit).apply { targetContentZIndex = if (deeper) 1f else -1f }
+            },
+            label = "customizePage",
+        ) { (shownSectionId, shownAppId) ->
+        val section = Section.from(shownSectionId)
+        val editing = shownAppId?.let { id -> apps.firstOrNull { it.key.id == id } }
         when {
             editing != null -> SectionColors(Section.Apps.color) { EditAppScreen(editing) { editingAppId = null } }
             section == null -> {
@@ -166,6 +198,7 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
                     }
                 }
             }
+        }
         }
         EdgeGlowOverlay()
       }
@@ -330,7 +363,7 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    row.forEach { s -> SectionTile(s, Modifier.weight(1f)) { onOpen(s) } }
+                    row.forEach { s -> SectionTile(s, Section.entries.indexOf(s), Modifier.weight(1f)) { onOpen(s) } }
                 }
             }
         }
@@ -358,14 +391,27 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
 }
 
 @Composable
-private fun SectionTile(section: Section, modifier: Modifier, onClick: () -> Unit) {
+private fun SectionTile(section: Section, index: Int, modifier: Modifier, onClick: () -> Unit) {
+    // Tiles rise into place one after another, and sink a little under your finger.
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, tween(420, delayMillis = 45 * index, easing = FastOutSlowInEasing)) }
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val press by animateFloatAsState(if (pressed) 0.95f else 1f, spring(dampingRatio = 0.5f, stiffness = 600f), label = "tilePress")
     Box(
         modifier
+            .graphicsLayer {
+                alpha = appear.value
+                translationY = (1f - appear.value) * 36.dp.toPx()
+                val s = (0.92f + 0.08f * appear.value) * press
+                scaleX = s
+                scaleY = s
+            }
             .height(128.dp)
             .shadow(6.dp, RoundedCornerShape(28.dp), ambientColor = section.color, spotColor = section.color)
             .clip(RoundedCornerShape(28.dp))
             .background(section.brush)
-            .clickable(onClick = onClick)
+            .clickable(interaction, indication = null, onClick = onClick)
             .padding(16.dp),
     ) {
         Box(

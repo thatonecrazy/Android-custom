@@ -16,6 +16,11 @@ enum class IconShape(val label: String) {
     Teardrop("Teardrop"),
     Leaf("Leaf"),
     Hexagon("Hexagon"),
+    Pebble("Pebble"),
+    Octagon("Octagon"),
+    Flower("Flower"),
+    Arch("Arch"),
+    Diamond("Diamond"),
 }
 
 /** The surface each icon sits on. */
@@ -30,6 +35,11 @@ enum class IconStyle(val label: String) {
     Original("Full color"),
     Vibrant("Extra vivid"),
     Themed("Themed"),
+    /** Each app's symbol in a deep version of its own color, on a soft version of it. */
+    Tinted("Tinted"),
+    /** Each app's symbol in its own color, on your background color. */
+    ColorSymbols("Color symbols"),
+    Pastel("Pastel"),
     Grayscale("Grayscale"),
 }
 
@@ -127,6 +137,25 @@ data class ThemeConfig(
     val glassShine: Int = 70,
     /** Strength of the shading and the shadow under the icon, 0 to 100. */
     val glassDepth: Int = 60,
+    /** Corner roundness of the Rounded shape, 0 (square) to 100 (circle-like). */
+    val iconCorner: Int = 44,
+    /** Size of the symbol inside its shape, in percent. */
+    val iconScale: Int = 100,
+    /** Outline around each icon: width in tenths of a percent of the icon (0 = none) and color. */
+    val iconOutline: Int = 0,
+    val iconOutlineColor: Int = 0xFFFFFFFF.toInt(),
+    /** Soft shadow under flat icons, 0 to 100. */
+    val iconShadow: Int = 0,
+    /** How solid icon backgrounds are, 0 (clear) to 100. */
+    val iconBgOpacity: Int = 100,
+    /** Second background color for a gradient with symbol styles; null is one color. */
+    val themedBg2: Int? = null,
+    /** Pulls every icon's colors toward [iconTint] by [iconTintStrength] percent. */
+    val iconTint: Int = 0xFF8C7BFF.toInt(),
+    val iconTintStrength: Int = 0,
+    /** Notification dot color (null is the accent) and whether it shows the number. */
+    val dotColor: Int? = null,
+    val dotCount: Boolean = false,
 
     // Labels and font
     val fontId: String = "system",

@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.drawable.Drawable
 import android.graphics.Rect
+import android.os.Bundle
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -153,11 +154,11 @@ class AppsRepository(private val context: Context, private val scope: CoroutineS
         return findByPackage(pkg)
     }
 
-    fun launch(key: AppKey, sourceBounds: Rect? = null) {
+    fun launch(key: AppKey, sourceBounds: Rect? = null, options: Bundle? = null) {
         val user = userManager.getUserForSerialNumber(key.userSerial)
         try {
             if (user == null) throw ActivityNotFoundException()
-            launcherApps.startMainActivity(key.component, user, sourceBounds, null)
+            launcherApps.startMainActivity(key.component, user, sourceBounds, options)
         } catch (e: Exception) {
             Log.w("Veneer", "Could not launch ${key.component}", e)
             Toast.makeText(context, "Couldn't open that app", Toast.LENGTH_SHORT).show()

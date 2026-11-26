@@ -3,6 +3,21 @@ package app.veneer.ui.customize
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.ui.graphics.graphicsLayer
+import app.veneer.icons.IconRenderer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -303,13 +318,128 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
     val app = context.veneer
     val theme = state.theme
     val packs = remember { app.icons.packs.installedPacks() }
+    val samples = remember(apps) { apps.filter { state.overrides[it.key.id]?.hidden != true }.take(3) }
     fun update(transform: (ThemeConfig) -> ThemeConfig) = app.store.updateTheme(transform)
+    val symbolStyle = theme.iconStyle == IconStyle.Themed || theme.iconStyle == IconStyle.ColorSymbols
 
     SettingsPage("Icons", onBack, state, apps, section = Section.IconsSection) {
+        item { SectionHeader("Shape") }
+        item { ShapePicker(theme.iconShape, theme.iconCorner) { s -> update { it.copy(iconShape = s) } } }
+        item {
+            AnimatedVisibility(theme.iconShape == IconShape.RoundedSquare, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                SettingCard {
+                    IntSliderRow("Roundness", theme.iconCorner, 0..100, { "$it%" }) { v -> update { it.copy(iconCorner = v) } }
+                }
+            }
+        }
+
+        item { SectionHeader("Style") }
+        item { StylePicker(theme, samples) { s -> update { it.copy(iconStyle = s) } } }
+        item {
+            SettingCard {
+                AnimatedContent(theme.iconStyle, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "styleNote") { style ->
+                    NoteText(
+                        when (style) {
+                            IconStyle.Original -> "Every app's own colors."
+                            IconStyle.Vibrant -> "Turns up the colors of every icon so they pop off the wallpaper."
+                            IconStyle.Themed -> "Each app's symbol in one color on one background color. Uses the one-color icons apps make for Android 13 and newer, or a tinted logo."
+                            IconStyle.Tinted -> "Each app gets its own soft color: a pale background and a deep symbol, both from the app's own color."
+                            IconStyle.ColorSymbols -> "Each app's symbol in its own bright color, on your background color. Looks great on dark or glass."
+                            IconStyle.Pastel -> "Softer, lighter colors for every icon."
+                            IconStyle.Grayscale -> "Every icon in black and white. Pairs well with a colorful wallpaper."
+                        },
+                    )
+                }
+                if (theme.iconStyle == IconStyle.Themed) {
+                    ColorRow("Symbol color", theme.themedFg, allowAlpha = false) { c -> update { it.copy(themedFg = c) } }
+                }
+                if (symbolStyle) {
+                    ColorRow("Background color", theme.themedBg, allowAlpha = false) { c -> update { it.copy(themedBg = c) } }
+                    SwitchRow("Gradient background", theme.themedBg2 != null, "Blends the background into a second color") { on ->
+                        update { it.copy(themedBg2 = if (on) IconRenderer.deep(it.themedBg) else null) }
+                    }
+                    theme.themedBg2?.let { second ->
+                        ColorRow("Second color", second, allowAlpha = false) { c -> update { it.copy(themedBg2 = c) } }
+                    }
+                    ClickRow("Match my wallpaper", "Symbol and background colors from your wallpaper", icon = Icons.Filled.AutoAwesome) {
+                        matchWallpaper(context, theme)?.let { next -> update { next } }
+                            ?: Toast.makeText(context, "Couldn't read your wallpaper's colors", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                IntSliderRow("Background", theme.iconBgOpacity, 0..100, { if (it == 100) "Solid" else if (it == 0) "Clear" else "$it%" }) { v ->
+                    update { it.copy(iconBgOpacity = v) }
+                }
+            }
+        }
+
+        item { SectionHeader("Finish") }
+        item {
+            SettingCard {
+                ChoiceRow(null, IconFinish.entries, theme.iconFinish, { it.label }) { f -> update { it.copy(iconFinish = f) } }
+                AnimatedContent(theme.iconFinish, transitionSpec = { (fadeIn(tween(220)) + expandVertically()) togetherWith (fadeOut(tween(120)) + shrinkVertically()) }, label = "finish") { finish ->
+                    Column {
+                        if (finish == IconFinish.Glass) {
+                            NoteText(
+                                if (symbolStyle) "Each symbol sits on a piece of glass in the glass color. Folders use the same glass."
+                                else "Each icon becomes glossy glass in its own colors. Pick Themed or Color symbols to put symbols on glass of one color.",
+                            )
+                            ColorRow("Glass color", theme.glassTint, "Also the color of folders", allowAlpha = false) { c -> update { it.copy(glassTint = c) } }
+                            IntSliderRow("See-through", theme.glassClarity, 0..90, { if (it == 0) "Solid" else "$it%" }) { v -> update { it.copy(glassClarity = v) } }
+                            IntSliderRow("Shine", theme.glassShine, 0..100, { "$it%" }) { v -> update { it.copy(glassShine = v) } }
+                            IntSliderRow("Depth", theme.glassDepth, 0..100, { "$it%" }) { v -> update { it.copy(glassDepth = v) } }
+                        } else {
+                            IntSliderRow("Shadow", theme.iconShadow, 0..100, { if (it == 0) "None" else "$it%" }) { v -> update { it.copy(iconShadow = v) } }
+                            NoteText("Glass puts every icon on a glossy 3D base with a light rim, a shine and a soft shadow.")
+                        }
+                    }
+                }
+            }
+        }
+
+        item { SectionHeader("Outline") }
+        item {
+            SettingCard {
+                IntSliderRow("Thickness", theme.iconOutline, 0..60, { if (it == 0) "None" else "%.1f%%".format(it / 10f) }) { v -> update { it.copy(iconOutline = v) } }
+                AnimatedVisibility(theme.iconOutline > 0, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    ColorRow("Outline color", theme.iconOutlineColor, "A ring around every icon") { c -> update { it.copy(iconOutlineColor = c) } }
+                }
+            }
+        }
+
+        item { SectionHeader("Size") }
+        item {
+            SettingCard {
+                IntSliderRow("Icon size", theme.iconSizeDp, 36..80, { "$it dp" }) { v -> update { it.copy(iconSizeDp = v) } }
+                IntSliderRow("Symbol size", theme.iconScale, 60..130, { "$it%" }) { v -> update { it.copy(iconScale = v) } }
+                NoteText("Symbol size zooms the picture inside each icon's shape.")
+            }
+        }
+
+        item { SectionHeader("Color tint") }
+        item {
+            SettingCard {
+                IntSliderRow("Strength", theme.iconTintStrength, 0..100, { if (it == 0) "Off" else "$it%" }) { v -> update { it.copy(iconTintStrength = v) } }
+                ColorRow("Tint color", theme.iconTint, "Pulls every icon's colors toward this one", allowAlpha = false) { c ->
+                    update { it.copy(iconTint = c, iconTintStrength = if (it.iconTintStrength == 0) 60 else it.iconTintStrength) }
+                }
+            }
+        }
+
+        item { SectionHeader("Notification dots") }
+        item {
+            SettingCard {
+                SwitchRow("Show notification dots", theme.notificationDots) { b -> update { it.copy(notificationDots = b) } }
+                ColorRow("Dot color", theme.dotColor ?: theme.accent, if (theme.dotColor == null) "Same as your accent color" else null, allowAlpha = false) { c ->
+                    update { it.copy(dotColor = c) }
+                }
+                SwitchRow("Show the number", theme.dotCount, "How many notifications are waiting") { b -> update { it.copy(dotCount = b) } }
+            }
+        }
+
         item { SectionHeader("Icon pack") }
         item {
             SettingCard {
-                RadioRow("None", "Each app's own icon, shaped and styled below", theme.iconPack == null) {
+                RadioRow("None", "Each app's own icon, shaped and styled above", theme.iconPack == null) {
                     update { it.copy(iconPack = null) }
                 }
                 packs.forEach { pack ->
@@ -323,55 +453,6 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
                         SystemActions.open(context, Intent(Intent.ACTION_VIEW, "https://play.google.com/store/search?q=icon%20pack&c=apps".toUri()))
                     }
                 }
-            }
-        }
-        item { SectionHeader("Shape") }
-        item { ShapePicker(theme.iconShape) { s -> update { it.copy(iconShape = s) } } }
-        item {
-            NoteText("Shapes apply to modern app icons, your own pictures, and old-style icons when they get a background. Icon pack icons keep their own design.")
-        }
-        item { SectionHeader("Style") }
-        item {
-            SettingCard {
-                ChoiceRow(null, IconStyle.entries, theme.iconStyle, { it.label }) { s -> update { it.copy(iconStyle = s) } }
-                when (theme.iconStyle) {
-                    IconStyle.Themed -> {
-                        NoteText("Uses the one-color icon apps provide for Android 13 and newer, or a tinted logo. Apps whose icon can't be tinted keep their colors.")
-                        ColorRow("Symbol color", theme.themedFg, allowAlpha = false) { c -> update { it.copy(themedFg = c) } }
-                        ColorRow("Background color", theme.themedBg, allowAlpha = false) { c -> update { it.copy(themedBg = c) } }
-                        ClickRow("Match my wallpaper") {
-                            matchWallpaper(context, theme)?.let { next -> update { next } }
-                                ?: Toast.makeText(context, "Couldn't read your wallpaper's colors", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    IconStyle.Grayscale -> NoteText("Every icon in black and white. Pairs well with a colorful wallpaper.")
-                    IconStyle.Vibrant -> NoteText("Turns up the colors of every icon so they pop off the wallpaper.")
-                    IconStyle.Original -> {}
-                }
-            }
-        }
-        item { SectionHeader("Finish") }
-        item {
-            SettingCard {
-                ChoiceRow(null, IconFinish.entries, theme.iconFinish, { it.label }) { f -> update { it.copy(iconFinish = f) } }
-                if (theme.iconFinish == IconFinish.Glass) {
-                    NoteText(
-                        if (theme.iconStyle == IconStyle.Themed) "Each symbol sits on a piece of glass in the glass color. Folders use the same glass."
-                        else "Each icon becomes glossy glass in its own colors. Pick the Themed style to put symbols on glass of one color.",
-                    )
-                    ColorRow("Glass color", theme.glassTint, "Also the color of folders", allowAlpha = false) { c -> update { it.copy(glassTint = c) } }
-                    IntSliderRow("See-through", theme.glassClarity, 0..90, { if (it == 0) "Solid" else "$it%" }) { v -> update { it.copy(glassClarity = v) } }
-                    IntSliderRow("Shine", theme.glassShine, 0..100, { "$it%" }) { v -> update { it.copy(glassShine = v) } }
-                    IntSliderRow("Depth", theme.glassDepth, 0..100, { "$it%" }) { v -> update { it.copy(glassDepth = v) } }
-                } else {
-                    NoteText("Glass puts every icon on a glossy 3D base with a light rim, a shine and a soft shadow.")
-                }
-            }
-        }
-        item { SectionHeader("Size") }
-        item {
-            SettingCard {
-                IntSliderRow("Icon size", theme.iconSizeDp, 36..80, { "$it dp" }) { v -> update { it.copy(iconSizeDp = v) } }
             }
         }
         item { SectionHeader("Old-style icons") }
@@ -389,7 +470,18 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
         }
         item {
             SettingCard {
-                ClickRow("Change a single app's icon", "Pick from any icon pack or use your own picture", icon = Icons.Filled.Brush, onClick = openApps)
+                ClickRow("Change a single app's icon", "Its own picture, shape, style, finish and colors", icon = Icons.Filled.Brush, onClick = openApps)
+                ClickRow("Reset icon settings", "Back to plain icons. Your apps and other settings stay.", icon = Icons.Filled.Refresh) {
+                    val d = ThemeConfig()
+                    update {
+                        it.copy(
+                            iconShape = d.iconShape, iconCorner = d.iconCorner, iconStyle = d.iconStyle, themedFg = d.themedFg, themedBg = d.themedBg,
+                            themedBg2 = d.themedBg2, iconBgOpacity = d.iconBgOpacity, iconFinish = d.iconFinish, iconShadow = d.iconShadow,
+                            iconOutline = d.iconOutline, iconOutlineColor = d.iconOutlineColor, iconScale = d.iconScale, iconSizeDp = d.iconSizeDp,
+                            iconTint = d.iconTint, iconTintStrength = d.iconTintStrength, dotColor = d.dotColor, dotCount = d.dotCount,
+                        )
+                    }
+                }
             }
         }
     }
@@ -400,24 +492,34 @@ private fun RadioRow(title: String, subtitle: String?, selected: Boolean, onClic
     ClickRow(title, subtitle, leading = { RadioButton(selected = selected, onClick = onClick) }, onClick = onClick)
 }
 
+/** A choice card that grows and lights up when picked. */
 @Composable
-private fun ShapePicker(selected: IconShape, onSelect: (IconShape) -> Unit) {
+private fun ChoiceCard(selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val scale by animateFloatAsState(if (selected) 1f else 0.94f, spring(dampingRatio = 0.5f, stiffness = 500f), label = "choiceScale")
+    val bg by animateColorAsState(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh, label = "choiceBg")
+    val ring by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "choiceRing")
+    Column(
+        modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(18.dp))
+            .background(bg)
+            .border(2.dp, ring, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) { content() }
+}
+
+@Composable
+private fun ShapePicker(selected: IconShape, corner: Int, onSelect: (IconShape) -> Unit) {
     val color = MaterialTheme.colorScheme.primary
     val outline = MaterialTheme.colorScheme.outline
-    LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (IconShape.entries.indexOf(selected) - 1).coerceAtLeast(0))
+    LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(IconShape.entries) { shape ->
-            val isSelected = shape == selected
-            Column(
-                Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                    .border(if (isSelected) 2.dp else 0.dp, if (isSelected) color else Color.Transparent, RoundedCornerShape(16.dp))
-                    .clickable { onSelect(shape) }
-                    .padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            ChoiceCard(shape == selected, { onSelect(shape) }) {
                 Canvas(Modifier.size(44.dp)) {
-                    val path = IconShapes.path(shape, size.minDimension)
+                    val path = IconShapes.path(shape, size.minDimension, corner)
                     if (path != null) {
                         drawPath(path.asComposePath(), color)
                     } else {
@@ -427,6 +529,25 @@ private fun ShapePicker(selected: IconShape, onSelect: (IconShape) -> Unit) {
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(shape.label, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+/** Every style shown on three of your own apps, so you can see each one before picking it. */
+@Composable
+private fun StylePicker(theme: ThemeConfig, samples: List<AppEntry>, onSelect: (IconStyle) -> Unit) {
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (IconStyle.entries.indexOf(theme.iconStyle) - 1).coerceAtLeast(0))
+    LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("styles")) {
+        items(IconStyle.entries) { style ->
+            ChoiceCard(style == theme.iconStyle, { onSelect(style) }) {
+                CompositionLocalProvider(LocalLauncherTheme provides theme.copy(iconStyle = style)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        samples.forEach { AppIcon(it, null, 30.dp) }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(style.label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
         }
     }

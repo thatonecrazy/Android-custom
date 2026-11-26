@@ -294,14 +294,16 @@ private fun DrawerCell(
     var menu by remember { mutableStateOf(false) }
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val bounds = remember { LaunchBounds() }
     Box(
         Modifier
             .fillMaxWidth()
+            .recordBounds(bounds)
             .combinedClickable(
                 interactionSource = interaction,
                 indication = null,
                 onClick = {
-                    actions.launch(entry.key)
+                    actions.launch(entry.key, bounds.rect)
                     controller.closeDrawer()
                 },
                 onLongClick = { menu = true },

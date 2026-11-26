@@ -84,7 +84,8 @@ import kotlin.math.roundToInt
 /** What the home screen needs from its activity. */
 interface LauncherActions {
     val widgetHost: WidgetHost
-    fun launch(key: AppKey)
+    /** Opens an app. With [bounds] (where its icon is, in window pixels) the app grows out of the icon. */
+    fun launch(key: AppKey, bounds: android.graphics.Rect? = null)
     fun addSystemWidget(info: AppWidgetProviderInfo)
     fun reconfigureWidget(appWidgetId: Int)
     fun deleteWidget(appWidgetId: Int)
