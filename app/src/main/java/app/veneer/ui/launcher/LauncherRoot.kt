@@ -34,6 +34,7 @@ import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
 import app.veneer.system.NotificationDotsService
 import app.veneer.system.WidgetPhotos
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import app.veneer.ui.common.EdgeGlowOverlay
@@ -76,6 +77,12 @@ fun LauncherRoot(controller: HomeController, actions: LauncherActions) {
     }
 
     val notificationCounts by NotificationDotsService.counts.collectAsStateWithLifecycle()
+
+    // Look for a new version now and then (at most a few times a day), after the home screen has settled.
+    LaunchedEffect(Unit) {
+        delay(8_000)
+        app.updater.checkIfDue()
+    }
 
     // Picking the picture for a photo widget.
     val context = LocalContext.current

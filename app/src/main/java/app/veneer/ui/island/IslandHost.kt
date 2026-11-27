@@ -95,7 +95,7 @@ fun IslandHost() {
         )
         else -> IslandContent.Idle
     }
-    IslandView(config, accent, content, alarm, font, onTap = {
+    IslandView(config, accent, content, alarm, font = font, onTap = {
         when (val c = content) {
             is IslandContent.Notification -> { c.open?.let { send(context, it) }; pop = null }
             is IslandContent.Charging -> pop = null

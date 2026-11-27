@@ -89,9 +89,9 @@ fun IslandView(
     accent: Color,
     content: IslandContent?,
     alarm: String?,
+    modifier: Modifier = Modifier,
     font: androidx.compose.ui.text.font.FontFamily? = null,
     onTap: () -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     if (content == null || (content == IslandContent.Idle && !config.idlePill)) return
     val bg = Color(config.background)

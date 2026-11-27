@@ -55,6 +55,8 @@ import app.veneer.data.BuiltinKind
 import app.veneer.data.HomeItem
 import app.veneer.data.ItemContent
 import app.veneer.data.PhotoShape
+import app.veneer.system.Updater
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.veneer.data.LayoutOps
 import app.veneer.data.WidgetAlign
 import app.veneer.data.WallpaperSpec
@@ -112,7 +114,9 @@ fun HomeMenuSheet(controller: HomeController, actions: LauncherActions) {
                 controller.homeMenuOpen = false
                 actions.openCustomize("wallpaper")
             }
-            SheetRow(Icons.Filled.Palette, Vivid.Pink, "Customize", "Icons, colors, fonts, each app, grid and dock") {
+            val update by controller.app.updater.state.collectAsStateWithLifecycle()
+            val ready = (update as? Updater.State.Available)?.release?.version
+            SheetRow(Icons.Filled.Palette, Vivid.Pink, "Customize", if (ready != null) "Veneer $ready is ready to install" else "Icons, colors, fonts, each app, grid and dock") {
                 controller.homeMenuOpen = false
                 actions.openCustomize()
             }

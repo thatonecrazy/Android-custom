@@ -358,6 +358,9 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
     }
 
     SettingsPage("Backup", onBack, state, emptyList(), preview = false, section = Section.Backup) {
+        item { SectionHeader("Updates") }
+        item { UpdatesCard() }
+
         item { SectionHeader("Backup") }
         item {
             SettingCard {

@@ -140,6 +140,16 @@ No app can restyle the system itself or the inside of other apps, so Veneer work
 
 To switch back, go to Settings → Apps → Default apps → Home app.
 
+## Updates
+
+Veneer updates itself, so you never download APK files by hand after the first install:
+
+1. Every time the version in `app/build.gradle.kts` changes, GitHub builds Veneer from this repository and publishes it under [Releases](https://github.com/thatonecrazy/Android-custom/releases), signed with the same key as before.
+2. Veneer checks for a new release a few times a day and shows **Veneer X is ready** at the top of Customize (the home screen's long-press menu mentions it too). You can also check right away in Customize → Backup → Updates, or turn automatic checks off there.
+3. Tap **Update now**. The first time, Android asks you to let Veneer install apps and to confirm the update. After that, Android 12 and newer let Veneer install its updates without asking.
+
+Veneer reads the releases without a GitHub account, so this works while the repository is public. Apps like [Obtainium](https://github.com/ImranR98/Obtainium) can follow the same releases if you prefer.
+
 ## Using it
 
 | Do this | To get |
@@ -166,7 +176,8 @@ Veneer asks for these only when you turn on the feature that needs them:
 - **Notification access** for notification dots and the music widget (Android shares media sessions only with apps that have it).
 - **Calendar** for the calendar agenda and "at a glance" widgets.
 - **Approximate location** for the weather widgets, if you'd rather not pick a city. Only a rough position (rounded to about 1 km) is sent to [Open-Meteo](https://open-meteo.com), a free weather service that needs no account. Without it, weather works from the city you choose.
-- **Internet** is used only for the weather.
+- **Internet** is used for the weather and for checking GitHub for Veneer updates.
+- **Install apps** lets Veneer install its own updates. Android asks for it once, the first time you update.
 - **Accessibility service** ("Veneer") for the island, or if you pick "Lock screen" for a gesture. Android only lets accessibility services draw above the status bar and lock the screen; Veneer's reads nothing on screen.
 
 ## Building
@@ -179,6 +190,8 @@ Needs JDK 17 or newer and the Android SDK (platform 37, build-tools 37). Put the
 ```
 
 The UI tests run the real home screen and customization screens in Robolectric with native graphics: launching, swiping to the app list, searching, long-press menus, drag-and-drop, building a look step by step, changing a single app, and rendering every icon shape and style.
+
+`.github/workflows/release.yml` builds and publishes a release on GitHub whenever the version changes.
 
 Builds are signed with `app/debug.keystore`, a project-specific debug key committed on purpose so every build installs over the previous one. Use your own private key before publishing to a store.
 

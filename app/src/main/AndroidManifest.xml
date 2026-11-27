@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- The calendar agenda widget; asked for only when that widget is added. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Updating itself from Veneer's GitHub releases. Android asks once before Veneer may install. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application
         android:name=".VeneerApp"
@@ -46,6 +49,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Hears back from Android's installer when Veneer updates itself. -->
+        <receiver
+            android:name=".system.InstallResultReceiver"
+            android:exported="false" />
 
         <!-- Notification dots on icons and the music widget. Turned on by the user in system settings. -->
         <service

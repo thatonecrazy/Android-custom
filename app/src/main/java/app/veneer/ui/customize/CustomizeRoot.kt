@@ -117,7 +117,7 @@ enum class Section(val id: String, val title: String, val subtitle: String, val 
     Drawer("drawer", "App list", "Columns and labels", Icons.Filled.Apps, listOf(Vivid.Green, Vivid.Teal)),
     Wallpaper("wallpaper", "Wallpaper", "Your photos, gradients", Icons.Filled.Wallpaper, listOf(Vivid.Purple, Vivid.Pink)),
     Island("island", "Island", "A live pill at the top", Icons.Filled.Smartphone, listOf(Vivid.Violet, Vivid.Blue)),
-    Backup("backup", "Backup", "Saved looks, restore", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
+    Backup("backup", "Backup", "Updates, saved looks", Icons.Filled.Backup, listOf(Vivid.Slate, Vivid.Blue)),
     ;
 
     val color: Color get() = colors.first()
@@ -313,6 +313,7 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
     val context = LocalContext.current
     var isDefault by remember { mutableStateOf(SystemActions.isDefaultLauncher(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { isDefault = SystemActions.isDefaultLauncher(context) }
+    LaunchedEffect(Unit) { context.veneer.updater.checkIfDue() }
     SettingsPage("Make it yours", onClose, state, apps) {
         item {
             Text(
@@ -322,6 +323,7 @@ private fun MainMenu(state: LauncherState, apps: List<AppEntry>, onOpen: (Sectio
                 modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 8.dp),
             )
         }
+        item { UpdateBanner() }
         if (!isDefault) {
             item {
                 Column(

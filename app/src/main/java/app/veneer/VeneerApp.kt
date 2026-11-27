@@ -8,6 +8,7 @@ import app.veneer.fonts.FontManager
 import app.veneer.icons.IconPackManager
 import app.veneer.icons.IconProvider
 import app.veneer.system.WallpaperShuffler
+import app.veneer.system.Updater
 import app.veneer.system.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,9 @@ class VeneerApp : Application() {
         private set
     lateinit var weather: WeatherRepository
         private set
+
+    /** Checks GitHub for newer versions of Veneer and installs them. */
+    val updater: Updater by lazy { Updater(this) }
 
     override fun onCreate() {
         super.onCreate()

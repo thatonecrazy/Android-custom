@@ -16,6 +16,7 @@ import android.graphics.Shader
 import android.util.LruCache
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 import app.veneer.data.IconShape
 import kotlin.math.roundToInt
 
@@ -137,21 +138,20 @@ object GlassIcons {
         // shadow slipped in behind it.
         val out = createBitmap(sizePx, sizePx)
         val c = Canvas(out)
-        c.save()
-        c.translate(l.left, l.top)
-        if (symbolOnly) {
-            c.drawColor(ColorUtils.setAlphaComponent(base, ((1f - clarity) * 255).roundToInt().coerceIn(0, 255)))
-            c.drawBitmap(l.under, 0f, 0f, null)
-            if (depth > 0f) drawSymbolShadow(c, content, sizePx, l.body, depth)
-            c.drawBitmap(content, null, bodyRect, filter)
-        } else {
-            filter.alpha = (255 - clarity * 0.6f * 255).roundToInt().coerceIn(0, 255)
-            c.drawBitmap(content, null, bodyRect, filter)
-            c.drawBitmap(l.under, 0f, 0f, null)
+        c.withTranslation(l.left, l.top) {
+            if (symbolOnly) {
+                drawColor(ColorUtils.setAlphaComponent(base, ((1f - clarity) * 255).roundToInt().coerceIn(0, 255)))
+                drawBitmap(l.under, 0f, 0f, null)
+                if (depth > 0f) drawSymbolShadow(this, content, sizePx, l.body, depth)
+                drawBitmap(content, null, bodyRect, filter)
+            } else {
+                filter.alpha = (255 - clarity * 0.6f * 255).roundToInt().coerceIn(0, 255)
+                drawBitmap(content, null, bodyRect, filter)
+                drawBitmap(l.under, 0f, 0f, null)
+            }
+            drawBitmap(l.over, 0f, 0f, null)
+            IconRenderer.applyMask(this, l.path)
         }
-        c.drawBitmap(l.over, 0f, 0f, null)
-        IconRenderer.applyMask(c, l.path)
-        c.restore()
         l.shadow?.let { c.drawBitmap(it, 0f, 0f, behind) }
         content.recycle()
         return out

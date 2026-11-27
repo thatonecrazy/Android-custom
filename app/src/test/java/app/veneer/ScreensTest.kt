@@ -52,6 +52,8 @@ import app.veneer.icons.IconRenderer
 import app.veneer.icons.IconSource
 import app.veneer.icons.iconSpec
 import app.veneer.system.PhotoWallpapers
+import app.veneer.system.Release
+import app.veneer.system.Updater
 import app.veneer.system.WeatherNow
 import app.veneer.system.WidgetPhotos
 import app.veneer.system.Wallpapers
@@ -85,6 +87,7 @@ class ScreensTest {
     @Before
     fun setUp() {
         app = ApplicationProvider.getApplicationContext()
+        app.updater.autoCheck = false // no network in tests
         TestApps.install(app)
         app.icons.iconSource = { entry, _ -> TestApps.icon(entry.label) }
         app.apps.refresh()
@@ -590,6 +593,27 @@ class ScreensTest {
             assertTrue(app.store.current.island.enabled)
             compose.onNodeWithText("Let Veneer draw over the status bar").assertExists()
         }
+    }
+
+    /** A ready update shows as a banner at the top of Customize, and Backup has the update settings. */
+    @Test
+    fun updatesShowInCustomize() {
+        val release = Release(
+            "9.9", "Update Veneer from inside the app", "https://example.invalid/Veneer-9.9.apk", 3_800_000L, "https://example.invalid",
+        )
+        app.updater.setStateForPreview(Updater.State.Available(release))
+        ActivityScenario.launch(CustomizeActivity::class.java).use {
+            compose.waitForIdle()
+            compose.onNodeWithText("Veneer 9.9 is ready").assertExists()
+            compose.onNodeWithText("Update now").assertExists()
+            shot("update-banner", backdrop)
+            compose.onNode(hasScrollAction()).performScrollToNode(hasText("Backup"))
+            compose.onNodeWithText("Backup").performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("Check automatically").assertExists()
+            compose.onAllNodesWithText("Veneer 9.9 is ready").assertCountEquals(1)
+        }
+        app.updater.setStateForPreview(Updater.State.Idle)
     }
 
     @Test
