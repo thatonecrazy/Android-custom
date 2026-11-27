@@ -1,0 +1,64 @@
+# Builds Veneer and publishes it as a GitHub release whenever the version in app/build.gradle.kts
+# changes. The app's built-in updater looks for these releases, so phones update without
+# downloading APK files by hand.
+name: Release
+
+on:
+  push:
+    branches: [ccr-a960c137-yp19b8, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          name=$(sed -nE 's/^[[:space:]]*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          if gh release view "v$name" > /dev/null 2>&1; then
+            echo "Veneer $name is already released; nothing to do."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.version.outputs.exists == 'false'
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+        if: steps.version.outputs.exists == 'false'
+        with:
+          packages: 'platforms;android-37.0 build-tools;36.0.0 build-tools;37.0.0'
+
+      - name: Build the app
+        if: steps.version.outputs.exists == 'false'
+        run: ./gradlew :app:assembleRelease --no-daemon --console=plain
+
+      - name: Publish the release
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk "Veneer-$VERSION.apk"
+          git log -1 --format=%B | grep -vE '^(Co-Authored-By|Claude-Session):' > notes.md
+          gh release create "v$VERSION" "Veneer-$VERSION.apk" --title "Veneer $VERSION" --notes-file notes.md --target "$GITHUB_SHA"
