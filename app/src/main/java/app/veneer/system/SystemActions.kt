@@ -177,8 +177,10 @@ object Wallpapers {
         withContext(Dispatchers.Default) {
             val (w, h) = screenSize(context)
             val bmp = render(spec, w, h, context)
-            runCatching { WallpaperManager.getInstance(context).setBitmap(bmp, null, true, target.flags) }
-                .also { bmp.recycle() }.isSuccess
+            runCatching {
+                WallpaperManager.getInstance(context).setBitmap(bmp, null, true, target.flags)
+                CurrentWallpaper.record(context, bmp, target.flags)
+            }.also { bmp.recycle() }.isSuccess
         }
 
     suspend fun applyImage(context: Context, uri: Uri, target: WallpaperTarget): Boolean = withContext(Dispatchers.IO) {
@@ -192,6 +194,7 @@ object Wallpapers {
                 BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
             } ?: error("Couldn't read the picture")
             WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, target.flags)
+            CurrentWallpaper.record(context, bitmap, target.flags)
             bitmap.recycle()
         }.isSuccess
     }

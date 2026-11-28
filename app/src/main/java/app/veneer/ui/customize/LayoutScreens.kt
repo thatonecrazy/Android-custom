@@ -56,7 +56,7 @@ fun HomeLayoutScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> U
     var lockReady by remember { mutableStateOf(LockService.isEnabled(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { lockReady = LockService.isEnabled(context) }
 
-    SettingsPage("Home screen", onBack, state, apps, section = Section.HomeLayout) {
+    SettingsPage("Home screen", onBack, state, apps, preview = PagePreview(PreviewKind.MiniHome), section = Section.HomeLayout) {
         item { SectionHeader("Weather") }
         item { WeatherCard(state.weather) }
 
@@ -223,7 +223,7 @@ fun DrawerScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
     val theme = state.theme
     fun update(transform: (ThemeConfig) -> ThemeConfig) = store.updateTheme(transform)
 
-    SettingsPage("App list", onBack, state, apps, section = Section.Drawer) {
+    SettingsPage("App list", onBack, state, apps, preview = PagePreview(PreviewKind.MiniAppList), section = Section.Drawer) {
         item { SectionHeader("Layout") }
         item {
             SettingCard {

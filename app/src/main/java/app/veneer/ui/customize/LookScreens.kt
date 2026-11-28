@@ -137,7 +137,7 @@ fun ColorsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
     val theme = state.theme
     fun update(transform: (ThemeConfig) -> ThemeConfig) = app.store.updateTheme(transform)
 
-    SettingsPage("Colors", onBack, state, apps, section = Section.Colors) {
+    SettingsPage("Colors", onBack, state, apps, preview = PagePreview(PreviewKind.HomeAndAppList, oldStyle = true), section = Section.Colors) {
         item { SectionHeader("Accent") }
         item {
             SettingCard {
@@ -322,7 +322,7 @@ fun IconsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, 
     fun update(transform: (ThemeConfig) -> ThemeConfig) = app.store.updateTheme(transform)
     val symbolStyle = theme.iconStyle == IconStyle.Themed || theme.iconStyle == IconStyle.ColorSymbols
 
-    SettingsPage("Icons", onBack, state, apps, section = Section.IconsSection) {
+    SettingsPage("Icons", onBack, state, apps, preview = PagePreview(PreviewKind.Home, folder = true, oldStyle = true), section = Section.IconsSection) {
         item { SectionHeader("Shape") }
         item { ShapePicker(theme.iconShape, theme.iconCorner) { s -> update { it.copy(iconShape = s) } } }
         item {
@@ -575,7 +575,7 @@ fun FontsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit) 
         }
     }
 
-    SettingsPage("Fonts", onBack, state, apps, section = Section.Fonts) {
+    SettingsPage("Fonts", onBack, state, apps, preview = PagePreview(PreviewKind.HomeAndAppList), section = Section.Fonts) {
         item { SectionHeader("Font") }
         item { NoteText("Used for app names, the app list, menus and every widget set to the theme font.") }
         item {

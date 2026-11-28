@@ -120,9 +120,9 @@ fun QuickPanel(
     accent: Color,
     state: QuickPanelState,
     actions: QuickPanelActions,
-    reduceMotion: Boolean,
-    font: FontFamily? = null,
     modifier: Modifier = Modifier,
+    reduceMotion: Boolean = false,
+    font: FontFamily? = null,
 ) {
     val bg = lerp(Color(config.background), Color(config.content), 0.06f)
     val fg = Color(config.content)

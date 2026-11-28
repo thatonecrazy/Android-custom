@@ -92,15 +92,15 @@ interface LauncherActions {
     fun openCustomize(section: String? = null)
 }
 
-private data class Cell(val x: Int, val y: Int, val spanX: Int, val spanY: Int)
+internal data class Cell(val x: Int, val y: Int, val spanX: Int, val spanY: Int)
 
-private fun HomeItem.cell() = Cell(x, y, spanX, spanY)
+internal fun HomeItem.cell() = Cell(x, y, spanX, spanY)
 
-private val GridPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+internal val GridPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
 
 /** Lays children out on a fixed grid. Each child carries its cell as its layoutId. */
 @Composable
-private fun CellGrid(columns: Int, rows: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun CellGrid(columns: Int, rows: Int, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Layout(content, modifier) { measurables, constraints ->
         val w = constraints.maxWidth
         val h = constraints.maxHeight
@@ -119,6 +119,16 @@ private fun CellGrid(columns: Int, rows: Int, modifier: Modifier = Modifier, con
 }
 
 fun appId(content: ItemContent.App) = content.id
+
+/** How big icons are on a home page of this size: the chosen size, made smaller if the grid's cells can't fit it. */
+internal fun homeIconSize(theme: app.veneer.data.ThemeConfig, gridWidth: Dp, gridHeight: Dp): Dp {
+    val labelSpace = if (theme.showHomeLabels) (theme.labelSizeSp * 1.3f + 6f).dp else 0.dp
+    val cellH = (gridHeight - GridPadding.calculateTopPadding() * 2) / theme.gridRows
+    val cellW = (gridWidth - GridPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) * 2) / theme.gridColumns
+    return minOf(theme.iconSizeDp.dp, cellH - labelSpace - 4.dp, cellW - 8.dp).coerceAtLeast(24.dp)
+}
+
+internal fun dockIconSize(theme: app.veneer.data.ThemeConfig): Dp = min(theme.iconSizeDp, 60).dp
 
 @Composable
 fun HomeScreen(
@@ -178,15 +188,10 @@ fun HomeScreen(
 
     var gridHeightPx by remember { mutableIntStateOf(0) }
     var gridWidthPx by remember { mutableIntStateOf(0) }
-    val labelSpace = if (theme.showHomeLabels) (theme.labelSizeSp * 1.3f + 6f).dp else 0.dp
     val iconSize: Dp = with(density) {
-        if (gridHeightPx == 0) theme.iconSizeDp.dp else {
-            val cellH = ((gridHeightPx - GridPadding.calculateTopPadding().toPx() * 2) / theme.gridRows).toDp()
-            val cellW = ((gridWidthPx - GridPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr).toPx() * 2) / theme.gridColumns).toDp()
-            minOf(theme.iconSizeDp.dp, cellH - labelSpace - 4.dp, cellW - 8.dp).coerceAtLeast(24.dp)
-        }
+        if (gridHeightPx == 0) theme.iconSizeDp.dp else homeIconSize(theme, gridWidthPx.toDp(), gridHeightPx.toDp())
     }
-    val dockIconSize = min(theme.iconSizeDp, 60).dp
+    val dockIconSize = dockIconSize(theme)
 
     Column(
         Modifier
@@ -292,7 +297,7 @@ private fun DropHighlight(controller: HomeController, state: LauncherState, page
 }
 
 @Composable
-private fun PageIndicator(count: Int, current: Int, accent: Color) {
+internal fun PageIndicator(count: Int, current: Int, accent: Color) {
     Row(
         Modifier
             .fillMaxWidth()

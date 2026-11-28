@@ -207,8 +207,10 @@ fun CustomizeRoot(initialSection: String?, onFinish: () -> Unit) {
 }
 
 /**
- * The frame of every Customize page. With [preview], the top of the page is a see-through window
- * onto the real wallpaper with a live sample of the home screen.
+ * The frame of every Customize page. With a [preview], the top of the page shows a live copy of
+ * the home screen (or app list) in the current settings, over the real wallpaper behind the
+ * window; tapping it shows it full screen until it's tapped again. With a [backdrop], that
+ * wallpaper is drawn behind the page instead, as if it were set.
  */
 @Composable
 fun SettingsPage(
@@ -216,94 +218,64 @@ fun SettingsPage(
     onBack: () -> Unit,
     state: LauncherState,
     apps: List<AppEntry>,
-    preview: Boolean = true,
+    preview: PagePreview? = PagePreview(PreviewKind.Home),
     section: Section? = null,
+    backdrop: WallpaperSpec? = null,
     content: LazyListScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
-        if (preview) {
-            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            ThemePreview(state, apps, Modifier.fillMaxWidth().height(200.dp))
-        }
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = if (preview) RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) else RoundedCornerShape(0.dp),
-        ) {
-            Column(
-                Modifier.windowInsetsPadding(
-                    if (preview) WindowInsets.navigationBars.union(WindowInsets.ime) else WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.ime),
-                ),
+    var full by rememberSaveable { mutableStateOf(false) }
+    val fullness by animateFloatAsState(if (full) 1f else 0f, tween(240), label = "fullPreview")
+    BackHandler(enabled = full) { full = false }
+    Box(Modifier.fillMaxSize()) {
+        if (backdrop != null) TryOnBackdrop(backdrop)
+        Column(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - fullness }) {
+            if (preview != null) {
+                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+                PreviewFrame(preview, state, apps, tryingOn = backdrop != null, onOpen = { full = true }, modifier = Modifier.fillMaxWidth())
+            }
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+                shape = if (preview != null) RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp) else RoundedCornerShape(0.dp),
             ) {
-                Row(Modifier.padding(start = 12.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    FilledTonalIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
-                    Spacer(Modifier.width(12.dp))
-                    if (section != null) {
-                        Box(
-                            Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(section.brush),
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(section.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) }
-                        Spacer(Modifier.width(10.dp))
+                Column(
+                    Modifier.windowInsetsPadding(
+                        if (preview != null) WindowInsets.navigationBars.union(WindowInsets.ime) else WindowInsets.statusBars.union(WindowInsets.navigationBars).union(WindowInsets.ime),
+                    ),
+                ) {
+                    Row(Modifier.padding(start = 12.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        FilledTonalIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                        Spacer(Modifier.width(12.dp))
+                        if (section != null) {
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(section.brush),
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(section.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     }
-                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    LazyColumn(Modifier.fillMaxSize(), content = {
+                        content()
+                        item { Spacer(Modifier.height(32.dp)) }
+                    })
                 }
-                LazyColumn(Modifier.fillMaxSize(), content = {
-                    content()
-                    item { Spacer(Modifier.height(32.dp)) }
-                })
             }
         }
-    }
-}
-
-/** A small live copy of the home screen: a clock, a row of apps and the dock, all in the current theme. */
-@Composable
-fun ThemePreview(state: LauncherState, apps: List<AppEntry>, modifier: Modifier = Modifier, theme: ThemeConfig = state.theme) {
-    val app = LocalContext.current.veneer
-    val font = remember(theme.fontId) { app.fonts.family(theme.fontId) }
-    val byId = remember(apps) { apps.associateBy { it.key.id } }
-    val dockApps = remember(state.items, byId) {
-        state.items.filter { it.page == DOCK_PAGE }.sortedBy { it.x }
-            .mapNotNull { (it.content as? ItemContent.App)?.let { c -> byId["${c.component}#${c.user}"] } }
-    }
-    val sample = remember(apps, dockApps) {
-        val visible = apps.filter { state.overrides[it.key.id]?.hidden != true && it !in dockApps }
-        visible.take(4) to (dockApps.ifEmpty { visible.drop(4) }).take(theme.dockColumns.coerceAtMost(5))
-    }
-    LauncherTheme(theme, font) {
-        Box(modifier.background(Color.Black.copy(alpha = theme.wallpaperDim))) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                Box(Modifier.fillMaxWidth().height(56.dp)) {
-                    BuiltinWidgetView(BuiltinKind.ClockDate, HomeController.defaultStyle(BuiltinKind.ClockDate).copy(sizeSp = 40))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    sample.first.forEach { e ->
-                        val o = state.overrides[e.key.id]
-                        AppTile(
-                            e, o?.label ?: e.label, o?.icon, theme.iconSizeDp.coerceAtMost(52).dp,
-                            showLabel = theme.showHomeLabels, labelColor = Color(theme.labelColor),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-                if (theme.dockEnabled) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(theme.dockCornerDp.dp))
-                            .background(Color(theme.dockBg))
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                    ) {
-                        sample.second.forEach { e ->
-                            AppTile(e, "", state.overrides[e.key.id]?.icon, 40.dp, showLabel = false, labelColor = Color.White, modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
+        if (preview != null && (full || fullness > 0f)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = fullness
+                        val s = 0.94f + 0.06f * fullness
+                        scaleX = s
+                        scaleY = s
+                    },
+            ) { FullScreenPreview(preview, state, apps, onClose = { full = false }) }
         }
     }
 }

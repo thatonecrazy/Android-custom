@@ -92,6 +92,13 @@ class QuickActions(private val context: Context) {
         runCatching { camera?.unregisterTorchCallback(torchCallback) }
     }
 
+    /** Whether mobile data is on. Android shares this with apps that can see the network state, which Veneer can. */
+    private fun mobileDataOn(): Boolean? = try {
+        context.getSystemService(TelephonyManager::class.java)?.isDataEnabled
+    } catch (_: SecurityException) {
+        null // a phone that also wants the phone-state permission: the tile shows no state rather than a wrong one
+    }
+
     /** On or off right now; null for tiles without an on/off state, or whose state Android doesn't share. */
     fun isOn(tile: QuickTile): Boolean? = runCatching {
         when (tile) {
@@ -102,7 +109,7 @@ class QuickActions(private val context: Context) {
                 it != NotificationManager.INTERRUPTION_FILTER_ALL && it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
             }
             QuickTile.AutoRotate -> Settings.System.getInt(resolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
-            QuickTile.MobileData -> context.getSystemService(TelephonyManager::class.java)?.isDataEnabled
+            QuickTile.MobileData -> mobileDataOn()
             QuickTile.Location -> context.getSystemService(LocationManager::class.java)?.let { lm ->
                 if (Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled else lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
             }

@@ -64,6 +64,7 @@ class WallpaperShuffler(private val context: Context, private val store: StateSt
             ShuffleTarget.Lock -> WallpaperManager.FLAG_LOCK
         }
         WallpaperManager.getInstance(context).setBitmap(bitmap, null, true, flags)
+        CurrentWallpaper.record(context, bitmap, flags)
         bitmap.recycle()
         true
     }.getOrDefault(false)

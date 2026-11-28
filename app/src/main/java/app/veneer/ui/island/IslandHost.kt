@@ -216,7 +216,7 @@ fun IslandHost() {
         font = font,
         reduceMotion = reduceMotion,
         panel = if (panelShown) {
-            { QuickPanel(config, accent, panelState.copy(message = message), actions, reduceMotion, font) }
+            { QuickPanel(config, accent, panelState.copy(message = message), actions, reduceMotion = reduceMotion, font = font) }
         } else null,
         onTap = {
             when (val c = content) {

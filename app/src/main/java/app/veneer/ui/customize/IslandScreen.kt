@@ -56,8 +56,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -112,6 +126,18 @@ fun IslandScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
         notificationAccess = NotificationDotsService.isAllowed(context)
     }
     var sample by remember { mutableStateOf(Sample.Charging) }
+    var fullScreen by rememberSaveable { mutableStateOf(false) }
+    // A change jumps the preview to the sample that shows it, with a short label for what a picture can't show.
+    val notes = remember { PreviewNotes() }
+    val lastConfig = remember { arrayOf(config) }
+    LaunchedEffect(config) {
+        val old = lastConfig[0]
+        lastConfig[0] = config
+        if (old === config) return@LaunchedEffect
+        val (jump, note) = islandChange(old, config, sample) { pkg -> apps.firstOrNull { it.packageName == pkg }?.label ?: pkg }
+        jump?.let { sample = it }
+        note?.let { notes.show(it) }
+    }
     val accent = Color(config.accent ?: state.theme.accent)
     val font = remember(state.theme.fontId) { app.fonts.family(state.theme.fontId) }
     val reduceMotion = animationsOff()
@@ -124,7 +150,9 @@ fun IslandScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
         }
     }
 
-    SettingsPage("Island", onBack, state, apps, preview = false, section = Section.Island) {
+    BackHandler(enabled = fullScreen) { fullScreen = false }
+    Box(Modifier.fillMaxSize()) {
+    SettingsPage("Island", onBack, state, apps, preview = null, section = Section.Island) {
         item {
             Box(
                 Modifier
@@ -137,23 +165,31 @@ fun IslandScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
                     .padding(bottom = 16.dp)
                     .testTag("islandPreview"),
             ) {
-                val bar = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 12.dp)) {
-                    Text("9:41", style = bar)
-                    Spacer(Modifier.weight(1f))
-                    Text("5G  100", style = bar)
-                }
-                Box(Modifier.fillMaxWidth().offset(x = config.offsetXDp.dp, y = config.offsetYDp.dp), contentAlignment = Alignment.TopCenter) {
-                    IslandView(
-                        config, accent, sampleContent(sample, config),
-                        alarm = if (config.alarms) "7:00 AM" else null,
-                        font = font,
-                        reduceMotion = reduceMotion,
-                        panel = if (sample == Sample.Quick && config.quickActions) {
-                            { QuickPanel(config, accent, sampleQuickState(config), QuickPanelActions(), reduceMotion, font) }
-                        } else null,
+                IslandStage(config, accent, sample, font, reduceMotion)
+                // Tapping the preview shows it full screen; nothing inside it reacts on its own.
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .clickable(remember { MutableInteractionSource() }, indication = null) { fullScreen = true }
+                        .semantics {
+                            contentDescription = "Island preview. Tap to see it full screen"
+                            role = Role.Button
+                        },
+                )
+                if (!config.enabled && notes.note == null) {
+                    Text(
+                        "The island is off",
+                        color = Color.White,
+                        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .testTag("islandOff"),
                     )
                 }
+                NoteView(notes, Modifier.align(Alignment.BottomCenter).padding(horizontal = 12.dp))
             }
         }
         item {
@@ -284,6 +320,57 @@ fun IslandScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit)
             }
         }
     }
+    if (fullScreen) {
+        // The island at its real size and place at the top of a pretend screen, until it's tapped again.
+        StatusBarHidden()
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0xFF3A3A44), Color(0xFF16161C))))
+                .clickable(remember { MutableInteractionSource() }, indication = null) { fullScreen = false }
+                .testTag("islandFull"),
+        ) {
+            IslandStage(config, accent, sample, font, reduceMotion)
+            Text(
+                "Tap anywhere to go back",
+                color = Color.White.copy(alpha = 0.8f),
+                style = TextStyle(fontSize = 14.sp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp),
+            )
+        }
+    }
+    }
+}
+
+/** A pretend status bar with the island in its place, showing [sample]. */
+@Composable
+private fun IslandStage(config: IslandConfig, accent: Color, sample: Sample, font: FontFamily, reduceMotion: Boolean) {
+    Box(Modifier.fillMaxWidth()) {
+        val bar = TextStyle(color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 12.dp)) {
+            Text("9:41", style = bar)
+            Spacer(Modifier.weight(1f))
+            Text("5G  100", style = bar)
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .offset(x = config.offsetXDp.dp, y = config.offsetYDp.dp)
+                // While the island is off it's only a faint outline of what it would look like.
+                .graphicsLayer { alpha = if (config.enabled) 1f else 0.4f },
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            IslandView(
+                config, accent, sampleContent(sample, config),
+                alarm = if (config.alarms) "7:00 AM" else null,
+                font = font,
+                reduceMotion = reduceMotion,
+                panel = if (sample == Sample.Quick && config.quickActions) {
+                    { QuickPanel(config, accent, sampleQuickState(config), QuickPanelActions(), reduceMotion = reduceMotion, font = font) }
+                } else null,
+            )
+        }
+    }
 }
 
 /** Lines made up for the preview; real lyrics come from lrclib.net on the phone. */
@@ -298,18 +385,58 @@ private val sampleLyrics = Lyrics(
     synced = true,
 )
 
+/** The island in each sample, as it would really look with these settings: a part that's off doesn't open it. */
 private fun sampleContent(sample: Sample, config: IslandConfig): IslandContent {
     val lyricsButton = if (config.lyrics) LyricsView(false, LyricsState.Loading, 0L) else null
+    fun song(open: Boolean, lyrics: LyricsView?) =
+        IslandContent.Music("Late Night Drive", "Your music shows here", SampleCover.image, playing = true, open = open, lyrics = lyrics)
     return when (sample) {
         Sample.Idle, Sample.Quick -> IslandContent.Idle
-        Sample.Charging -> IslandContent.Charging(76)
-        Sample.Music -> IslandContent.Music("Late Night Drive", "Your music shows here", SampleCover.image, playing = true, open = false)
-        Sample.MusicOpen -> IslandContent.Music("Late Night Drive", "Your music shows here", SampleCover.image, playing = true, open = true, lyrics = lyricsButton)
-        Sample.Lyrics -> IslandContent.Music(
-            "Late Night Drive", "Your music shows here", SampleCover.image, playing = true, open = true,
-            lyrics = LyricsView(open = true, state = LyricsState.Found(sampleLyrics), positionMs = 8_500),
-        )
-        Sample.Message -> IslandContent.Notification("Messages", "Sam", "On my way, see you in 10!", null)
+        Sample.Charging -> if (config.charging) IslandContent.Charging(76) else IslandContent.Idle
+        Sample.Music -> if (config.music) song(open = false, lyrics = null) else IslandContent.Idle
+        Sample.MusicOpen -> if (config.music) song(open = true, lyrics = lyricsButton) else IslandContent.Idle
+        Sample.Lyrics -> when {
+            !config.music -> IslandContent.Idle
+            config.lyrics -> song(open = true, lyrics = LyricsView(open = true, state = LyricsState.Found(sampleLyrics), positionMs = 8_500))
+            else -> song(open = true, lyrics = null)
+        }
+        Sample.Message -> if (config.notifications) IslandContent.Notification("Messages", "Sam", "On my way, see you in 10!", null) else IslandContent.Idle
+    }
+}
+
+/**
+ * Which sample shows a change on the Island page, and a short label for what a still picture
+ * can't show (something turned off, how long pop-ups stay, music or video).
+ */
+private fun islandChange(old: IslandConfig, new: IslandConfig, current: Sample, appName: (String) -> String): Pair<Sample?, PreviewNote?> {
+    fun off(title: String, text: String) = PreviewNote(title, text, Icons.Filled.Smartphone)
+    return when {
+        new.enabled != old.enabled -> null to if (new.enabled) null else off("Island", "Off: it won't show over your apps")
+        new.charging != old.charging -> Sample.Charging to if (new.charging) null else off("Charging", "Off: plugging in leaves the island as it is")
+        new.music != old.music -> Sample.Music to if (new.music) null else off("Music", "Off: songs leave the island as it is")
+        new.lyrics != old.lyrics -> (if (new.lyrics) Sample.Lyrics else Sample.MusicOpen) to null
+        new.notifications != old.notifications -> Sample.Message to if (new.notifications) null else off("Notifications", "Off: new messages leave the island as it is")
+        new.alarms != old.alarms -> Sample.Idle to if (new.alarms) null else off("Alarms", "Off: no bubble for the next alarm")
+        new.idlePill != old.idlePill -> Sample.Idle to if (new.idlePill) null else off("Resting pill", "Off: the island hides until something happens")
+        new.popSeconds != old.popSeconds -> Sample.Message to PreviewNote("Pop-ups", "Stay open for ${new.popSeconds} seconds", Icons.Filled.Timer)
+        new.mediaKinds != old.mediaKinds -> {
+            val pkg = (new.mediaKinds.keys + old.mediaKinds.keys).first { new.mediaKinds[it] != old.mediaKinds[it] }
+            val kind = new.mediaKinds[pkg]
+            val text = when (kind) {
+                MediaKind.Music -> "Music: changes the island"
+                MediaKind.Video -> "Video: leaves the island as it is"
+                null -> "Automatic: ${if (MediaKinds.decide(pkg, null, null, 0, null, false).kind == MediaKind.Music) "music" else "decided by what plays"}"
+            }
+            (if (kind == MediaKind.Video) Sample.Idle else Sample.Music) to PreviewNote(appName(pkg), text, Icons.Filled.MusicNote)
+        }
+        new.quickActions != old.quickActions || new.tiles != old.tiles ->
+            Sample.Quick to if (new.quickActions) null else off("Quick actions", "Off: tapping the resting island does nothing")
+        // The highlight shows on the charging bolt, text on the battery level, and the size on the resting pill.
+        new.accent != old.accent && !new.outline && current in setOf(Sample.Idle, Sample.Message, Sample.Quick) -> Sample.Charging to null
+        new.content != old.content && current == Sample.Idle -> Sample.Charging to null
+        (new.widthDp != old.widthDp || new.heightDp != old.heightDp) && current in setOf(Sample.MusicOpen, Sample.Lyrics, Sample.Message) ->
+            (if (new.idlePill) Sample.Idle else Sample.Charging) to null
+        else -> null to null
     }
 }
 

@@ -52,6 +52,21 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 
 ## What you can change
 
+Each Customize page has a live preview at the top that shows what that page changes:
+- **Home screen**: a small copy of your whole home screen: your wallpaper, your first page on the grid you picked, page dots, the status bar (hidden, light or dark icons), the dock with every spot, its color and roundness, the darkening, and sample notification dots. Turning on the edge glow plays it around the preview, and changing a gesture shows what it does for 2 seconds.
+- **App list**: a small copy of the app list with your columns, names, background and text color.
+- **Icons, Colors, Fonts and Wallpaper**: a close-up of the home screen at its real size over your wallpaper, with a folder and an older app's icon where a setting only shows on those, and a piece of the app list on Colors and Fonts. A gradient you're making shows behind it before you set it.
+- **Island**: the island in each state; changing a setting jumps to the state that shows it.
+- Tap any preview to see it full screen; tap again to go back.
+
+<p>
+<img src="docs/screenshots/preview-home.png" width="200" alt="Home screen page with a small copy of the home screen">
+<img src="docs/screenshots/preview-drawer-changed.png" width="200" alt="App list page with a small copy of the app list">
+<img src="docs/screenshots/preview-icons.png" width="200" alt="Icons page with the close-up preview">
+<img src="docs/screenshots/preview-wallpaper-trying-on.png" width="200" alt="Wallpaper page trying on a gradient">
+</p>
+
+
 **Icons**
 - Thirteen shapes: system, circle, squircle, rounded (with a roundness slider), square, teardrop, leaf, hexagon, pebble, octagon, flower, arch and diamond.
 - Seven styles, each shown on your own apps before you pick: full color, extra vivid, themed (one symbol color on one background), tinted (each app's own soft color with a deep symbol), color symbols (each app's symbol in its own color on your background), pastel and grayscale.
@@ -102,10 +117,14 @@ The screenshots are produced by the test suite (see [Building](#building)), with
 
 **Island**
 - A pill at the top of the screen, over every app, that grows to show what's happening:
-  - plugging in: a bolt and the battery level, with the pill filling up
-  - music: album art and moving bars; tap for the song and play controls
-  - new notifications: the app, who it's from and the message (on the lock screen only "New notification")
+  - plugging in: a bolt that pulses once and a battery fill that slides up to the level
+  - music: the song's cover art fills the pill (darkened a little so the moving bars stay visible); tap for a card with the same art blurred behind the song and play controls
+  - new notifications: they drop down from the camera with a small bounce, and the app's icon pops in last (on the lock screen only "New notification")
   - alarms: a small bubble beside the pill when an alarm is set for the next 12 hours
+- Only music changes the island. Videos (YouTube, Netflix, Twitch, TikTok, videos in a browser and so on) leave it as it is. Veneer knows the common music and video apps, judges others by the song's details, and lets you pick Music or Video for any app under "Music or video?".
+- Lyrics: a Lyrics button on the open music card. Lyrics come from [LRCLIB](https://lrclib.net) (free, no account) only when you open them, follow the song line by line, and jump the song to a line you tap. Each song is looked up once and kept on the phone.
+- Quick actions: tap the resting island, or swipe down on it any time, for a drop-down of round tiles (Wi-Fi, Bluetooth, flashlight, Do not disturb, auto-rotate, mobile data, location, power saving, airplane mode, hotspot, screenshot, lock screen, power menu) with brightness and volume sliders. Tiles show the real state and update live. Android doesn't let apps switch Wi-Fi, mobile data, airplane mode, Bluetooth, location, hotspot or power saving themselves, so those tiles (marked with a small arrow) open Android's own pop-up or page. Pick, add and drag tiles into order in Customize → Island.
+- Every change has a short springy animation, all under about 0.4 seconds, and they turn off with Android's "Remove animations".
 - Edit its background, text and highlight colors, a glowing outline, width, height and position. It centers itself on the front camera.
 - Turn off the resting pill to show the island only when something happens. It hides when the phone is sideways, for games and videos.
 
@@ -176,9 +195,10 @@ Veneer asks for these only when you turn on the feature that needs them:
 - **Notification access** for notification dots and the music widget (Android shares media sessions only with apps that have it).
 - **Calendar** for the calendar agenda and "at a glance" widgets.
 - **Approximate location** for the weather widgets, if you'd rather not pick a city. Only a rough position (rounded to about 1 km) is sent to [Open-Meteo](https://open-meteo.com), a free weather service that needs no account. Without it, weather works from the city you choose.
-- **Internet** is used for the weather and for checking GitHub for Veneer updates.
+- **Internet** is used for the weather, for lyrics (only when you open them) and for checking GitHub for Veneer updates.
 - **Install apps** lets Veneer install its own updates. Android asks for it once, the first time you update.
 - **Accessibility service** ("Veneer") for the island, or if you pick "Lock screen" for a gesture. Android only lets accessibility services draw above the status bar and lock the screen; Veneer's reads nothing on screen.
+- **Modify system settings** and **Do Not Disturb access**, asked for the first time you use the island's auto-rotate, brightness or Do not disturb tiles. The tile says why and opens the right Android page.
 
 ## Building
 
@@ -189,7 +209,7 @@ Needs JDK 17 or newer and the Android SDK (platform 37, build-tools 37). Put the
 ./gradlew :app:testDebugUnitTest    # unit and Robolectric UI tests; writes docs/screenshots/
 ```
 
-The UI tests run the real home screen and customization screens in Robolectric with native graphics: launching, swiping to the app list, searching, long-press menus, drag-and-drop, building a look step by step, changing a single app, and rendering every icon shape and style.
+The UI tests run the real home screen and customization screens in Robolectric with native graphics: launching, swiping to the app list, searching, long-press menus, drag-and-drop, building a look step by step, changing a single app, and rendering every icon shape and style. `PreviewsTest` changes every setting on each Customize page with a preview and checks the preview shows it, as a picture, a 2-second label or the edge glow; the latest results are in [docs/preview-checks.md](docs/preview-checks.md).
 
 `.github/workflows/release.yml` builds and publishes a release on GitHub whenever the version changes.
 
@@ -204,9 +224,10 @@ Builds are signed with `app/debug.keystore`, a project-specific debug key commit
 | `icons/` | Icon shapes, rendering (shapes, themed, grayscale), icon pack parsing, icon cache |
 | `fonts/` | Built-in, bundled and imported fonts |
 | `widgets/` | Hosting other apps' widgets |
-| `system/` | Wallpaper generation, notification shade, system settings shortcuts |
+| `system/` | Wallpaper generation, notification shade, system settings shortcuts, the island's window, quick actions, music-or-video rules, lyrics lookup, self-updates |
 | `ui/launcher/` | Home screen, dock, drag and drop, app list, widget picker, Veneer widgets |
-| `ui/customize/` | Every customization screen with its live preview |
+| `ui/island/` | The island, its animations, the quick actions drop-down and lyrics |
+| `ui/customize/` | Every customization screen, and the previews at the top of them (`Previews.kt`) |
 | `ui/common/` | Shared controls, color picker, font picker, per-app editor |
 
 ## Licenses

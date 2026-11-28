@@ -80,8 +80,11 @@ import app.veneer.data.IconStyle
 import app.veneer.data.forApp
 import app.veneer.icons.IconPack
 import app.veneer.icons.IconPackInfo
-import app.veneer.ui.launcher.AppIcon
 import app.veneer.ui.theme.LocalLauncherTheme
+import app.veneer.ui.launcher.AppTile
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import app.veneer.veneer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -154,17 +157,35 @@ fun EditAppScreen(entry: AppEntry, onClose: () -> Unit) {
                 TextButton(onClick = onClose) { Text("Done") }
             }
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                // The app as it looks on the home screen: its icon, and its name in its own color and the theme's font.
+                val homeTheme = LocalLauncherTheme.current
                 Box(
                     Modifier
-                        .size(120.dp)
+                        .size(width = 160.dp, height = 150.dp)
                         .clip(RoundedCornerShape(32.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        .background(Brush.verticalGradient(listOf(Color(0xFF3A3A44), Color(0xFF16161C))))
+                        .testTag("appPreview"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    AppIcon(entry, override?.icon, 84.dp)
+                    AppTile(
+                        entry, override?.label ?: entry.label, override?.icon, 76.dp,
+                        showLabel = true, labelColor = Color(override?.labelColor ?: homeTheme.labelColor),
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 Text(override?.label ?: entry.label, style = MaterialTheme.typography.titleMedium)
+                if (override?.hidden == true) {
+                    Text(
+                        "Hidden from the app list",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
                 if (entry.isWorkProfile) {
                     Text("Work profile", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

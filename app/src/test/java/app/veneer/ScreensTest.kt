@@ -372,6 +372,8 @@ class ScreensTest {
             shot("customize-fonts", wallpaper)
             scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
 
+            // The menu's preview shows icons at their real size, so the lower tiles start below the fold.
+            compose.onAllNodes(hasScrollToIndexAction()).onFirst().performScrollToNode(hasText("Wallpaper"))
             compose.onNodeWithText("Wallpaper").performClick()
             compose.onNodeWithText("Choose a picture").assertExists()
             shot("customize-wallpaper", wallpaper)

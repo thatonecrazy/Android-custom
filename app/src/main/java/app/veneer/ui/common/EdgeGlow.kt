@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -84,6 +85,23 @@ fun EdgeGlowTriggers(theme: ThemeConfig) {
     }
 }
 
+/** Plays one glow: a sweep around the edge, then a fade. Draw it with [drawEdgeGlow]. */
+class GlowPlayer {
+    val sweep = Animatable(0f)
+    val fade = Animatable(0f)
+    var color by mutableStateOf(Color.Red)
+
+    val playing: Boolean get() = fade.value > 0f
+
+    suspend fun play(c: Color) {
+        color = c
+        fade.snapTo(1f)
+        sweep.snapTo(0f)
+        sweep.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        fade.animateTo(0f, tween(1100, easing = LinearEasing))
+    }
+}
+
 /**
  * A light that sweeps around the screen's rounded edge, then fades: Veneer's take on edge
  * lighting. It only draws while a glow is playing.
@@ -92,9 +110,7 @@ fun EdgeGlowTriggers(theme: ThemeConfig) {
 fun EdgeGlowOverlay() {
     val view = LocalView.current
     val density = LocalDensity.current
-    val sweep = remember { Animatable(0f) }
-    val fade = remember { Animatable(0f) }
-    var color by remember { mutableStateOf(Color.Red) }
+    val player = remember { GlowPlayer() }
     val corner = remember(view) {
         val fromDevice = if (Build.VERSION.SDK_INT >= 31) {
             view.rootWindowInsets?.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT)?.radius?.toFloat()
@@ -102,48 +118,47 @@ fun EdgeGlowOverlay() {
         fromDevice?.takeIf { it > 0f } ?: with(density) { 40.dp.toPx() }
     }
     LaunchedEffect(Unit) {
-        GlowBus.events.collect { c ->
-            color = Color(c)
-            launch {
-                fade.snapTo(1f)
-                sweep.snapTo(0f)
-                sweep.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
-                fade.animateTo(0f, tween(1100, easing = LinearEasing))
-            }
-        }
+        GlowBus.events.collect { c -> launch { player.play(Color(c)) } }
     }
-    if (fade.value <= 0f) return
-    Canvas(Modifier.fillMaxSize()) {
-        val a = fade.value
-        val inset = 1.5.dp.toPx()
-        val r = (corner - inset).coerceAtLeast(0f)
-        // The full outline, building up as the sweep goes round.
-        val outline = Path().apply {
-            addRoundRect(
-                androidx.compose.ui.geometry.RoundRect(inset, inset, size.width - inset, size.height - inset, CornerRadius(r)),
-            )
+    if (!player.playing) return
+    Canvas(Modifier.fillMaxSize()) { drawEdgeGlow(player, corner) }
+}
+
+/**
+ * Draws [player]'s glow around this area's edge, rounded by [cornerPx]. [widthScale] thins the
+ * light for small previews.
+ */
+fun DrawScope.drawEdgeGlow(player: GlowPlayer, cornerPx: Float, widthScale: Float = 1f) {
+    val a = player.fade.value
+    if (a <= 0f) return
+    val inset = 1.5.dp.toPx() * widthScale
+    val r = (cornerPx - inset).coerceAtLeast(0f)
+    // The full outline, building up as the sweep goes round.
+    val outline = Path().apply {
+        addRoundRect(
+            androidx.compose.ui.geometry.RoundRect(inset, inset, size.width - inset, size.height - inset, CornerRadius(r)),
+        )
+    }
+    val measure = PathMeasure().apply { setPath(outline, true) }
+    val length = measure.length
+    // Two arcs grow from the bottom middle, meeting at the top: like a ring of light closing.
+    val start = length * 0.5f
+    val grown = length * 0.5f * player.sweep.value
+    fun arc(from: Float, to: Float): Path {
+        val p = Path()
+        val a0 = ((from % length) + length) % length
+        val a1 = ((to % length) + length) % length
+        if (a0 <= a1) measure.getSegment(a0, a1, p, true) else {
+            measure.getSegment(a0, length, p, true)
+            measure.getSegment(0f, a1, p, true)
         }
-        val measure = PathMeasure().apply { setPath(outline, true) }
-        val length = measure.length
-        // Two arcs grow from the bottom middle, meeting at the top: like a ring of light closing.
-        val start = length * 0.5f
-        val grown = length * 0.5f * sweep.value
-        fun arc(from: Float, to: Float): Path {
-            val p = Path()
-            val a0 = ((from % length) + length) % length
-            val a1 = ((to % length) + length) % length
-            if (a0 <= a1) measure.getSegment(a0, a1, p, true) else {
-                measure.getSegment(a0, length, p, true)
-                measure.getSegment(0f, a1, p, true)
-            }
-            return p
-        }
-        val lit = Path().apply {
-            addPath(arc(start - grown, start))
-            addPath(arc(start, start + grown))
-        }
-        listOf(26.dp to 0.10f, 14.dp to 0.22f, 7.dp to 0.45f, 3.dp to 1f).forEach { (w, alpha) ->
-            drawPath(lit, color.copy(alpha = alpha * a), style = Stroke(width = w.toPx(), cap = StrokeCap.Round))
-        }
+        return p
+    }
+    val lit = Path().apply {
+        addPath(arc(start - grown, start))
+        addPath(arc(start, start + grown))
+    }
+    listOf(26.dp to 0.10f, 14.dp to 0.22f, 7.dp to 0.45f, 3.dp to 1f).forEach { (w, alpha) ->
+        drawPath(lit, player.color.copy(alpha = alpha * a), style = Stroke(width = w.toPx() * widthScale, cap = StrokeCap.Round))
     }
 }

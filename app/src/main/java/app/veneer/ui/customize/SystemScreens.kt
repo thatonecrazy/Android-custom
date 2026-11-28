@@ -101,6 +101,12 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
     val app = context.veneer
     var busy by remember { mutableStateOf(false) }
     var spec by remember { mutableStateOf((state.theme.wallpaper ?: WallpaperSpec()).copy(photo = null)) }
+    // Once the gradient is changed here, the preview shows it as if it were set, until it is.
+    var tryingOn by remember { mutableStateOf(false) }
+    fun change(next: WallpaperSpec) {
+        spec = next
+        tryingOn = true
+    }
     val shuffle = state.shuffle
     val scope = rememberCoroutineScope()
     val addPictures = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(30)) { uris ->
@@ -126,7 +132,7 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
         }
     }
 
-    SettingsPage("Wallpaper", onBack, state, apps, section = Section.Wallpaper) {
+    SettingsPage("Wallpaper", onBack, state, apps, section = Section.Wallpaper, backdrop = spec.takeIf { tryingOn }) {
         if (busy) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) }
         item { SectionHeader("Picture") }
         item {
@@ -187,19 +193,22 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                         .height(180.dp)
                         .clip(RoundedCornerShape(24.dp)),
                 )
-                ChoiceRow("Style", WallpaperStyle.entries, spec.style, { it.label }) { spec = spec.copy(style = it) }
+                ChoiceRow("Style", WallpaperStyle.entries, spec.style, { it.label }) { change(spec.copy(style = it)) }
                 ColorRow(if (spec.style == WallpaperStyle.Solid) "Color" else "First color", spec.color1, allowAlpha = false) {
-                    spec = spec.copy(color1 = it)
+                    change(spec.copy(color1 = it))
                 }
                 if (spec.style != WallpaperStyle.Solid) {
-                    ColorRow("Second color", spec.color2, allowAlpha = false) { spec = spec.copy(color2 = it) }
+                    ColorRow("Second color", spec.color2, allowAlpha = false) { change(spec.copy(color2 = it)) }
                     val third = spec.color3
                     SwitchRow("Add a third color", third != null) { on ->
-                        spec = spec.copy(color3 = if (on) 0xFFFFC93C.toInt() else null)
+                        change(spec.copy(color3 = if (on) 0xFFFFC93C.toInt() else null))
                     }
                     if (third != null) {
-                        ColorRow("Third color", third, allowAlpha = false) { spec = spec.copy(color3 = it) }
+                        ColorRow("Third color", third, allowAlpha = false) { change(spec.copy(color3 = it)) }
                     }
+                }
+                if (tryingOn) {
+                    ClickRow("Show my wallpaper in the preview", "Your gradient stays here to set later", icon = Icons.Filled.Wallpaper) { tryingOn = false }
                 }
                 Button(
                     onClick = {
@@ -207,7 +216,11 @@ fun WallpaperScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Un
                         chooseTarget = { target ->
                             busy = true
                             app.store.updateTheme { it.copy(wallpaper = chosen) }
-                            app.scope.launch { finish(Wallpapers.applyGenerated(context.applicationContext, chosen, target)) }
+                            app.scope.launch {
+                                val ok = Wallpapers.applyGenerated(context.applicationContext, chosen, target)
+                                finish(ok)
+                                if (ok) tryingOn = false
+                            }
                         }
                     },
                     enabled = !busy,
@@ -291,7 +304,7 @@ fun AppsScreen(state: LauncherState, apps: List<AppEntry>, onBack: () -> Unit, o
             q.isEmpty() || normalizeForSearch(state.overrides[e.key.id]?.label ?: e.label).contains(q)
         }
     }
-    SettingsPage("Your apps", onBack, state, apps, preview = false, section = Section.Apps) {
+    SettingsPage("Your apps", onBack, state, apps, preview = null, section = Section.Apps) {
         item {
             OutlinedTextField(
                 value = query,
@@ -357,7 +370,7 @@ fun BackupScreen(state: LauncherState, onBack: () -> Unit) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
     }
 
-    SettingsPage("Backup", onBack, state, emptyList(), preview = false, section = Section.Backup) {
+    SettingsPage("Backup", onBack, state, emptyList(), preview = null, section = Section.Backup) {
         item { SectionHeader("Updates") }
         item { UpdatesCard() }
 
