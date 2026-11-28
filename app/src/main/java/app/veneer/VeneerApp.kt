@@ -8,6 +8,7 @@ import app.veneer.fonts.FontManager
 import app.veneer.icons.IconPackManager
 import app.veneer.icons.IconProvider
 import app.veneer.system.WallpaperShuffler
+import app.veneer.system.LyricsRepository
 import app.veneer.system.Updater
 import app.veneer.system.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +36,9 @@ class VeneerApp : Application() {
 
     /** Checks GitHub for newer versions of Veneer and installs them. */
     val updater: Updater by lazy { Updater(this) }
+
+    /** Lyrics for the island's music card, kept on the phone once found. */
+    val lyrics: LyricsRepository by lazy { LyricsRepository(File(filesDir, "lyrics")) }
 
     override fun onCreate() {
         super.onCreate()

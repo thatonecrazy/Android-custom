@@ -8,8 +8,13 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyChild
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
@@ -41,6 +46,8 @@ import app.veneer.data.IconShape
 import app.veneer.data.IconStyle
 import app.veneer.data.ItemContent
 import app.veneer.data.LayoutOps
+import app.veneer.data.QuickTile
+import app.veneer.data.MediaKind
 import app.veneer.data.LayoutOps.Spot
 import app.veneer.data.ThemeConfig
 import app.veneer.data.WallpaperSpec
@@ -614,6 +621,88 @@ class ScreensTest {
             compose.onAllNodesWithText("Veneer 9.9 is ready").assertCountEquals(1)
         }
         app.updater.setStateForPreview(Updater.State.Idle)
+    }
+
+    /** Customize > Island: the cover-art, lyrics and quick actions samples, and the music, lyrics and tile settings. */
+    @Test
+    fun islandSettingsForMusicLyricsAndQuickActions() {
+        app.store.update {
+            it.copy(
+                island = it.island.copy(
+                    enabled = true, background = 0xFF8A00E6.toInt(), accent = 0xFF3DDC84.toInt(),
+                    mediaApps = listOf("com.spotify.music", "com.google.android.youtube", "com.example.player"),
+                ),
+            )
+        }
+        ActivityScenario.launch(CustomizeActivity::class.java).use {
+            compose.waitForIdle()
+            compose.onNode(hasScrollAction()).performScrollToNode(hasText("Island"))
+            compose.onNodeWithText("Island").performClick()
+            compose.waitForIdle()
+
+            // The preview shows the cover-art look with a sample cover, the lyrics, and the drop-down.
+            compose.onAllNodesWithText("Music").onFirst().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithTag("musicPill", useUnmergedTree = true).assertExists()
+            shot("island-music-cover", null)
+            compose.onAllNodesWithText("Lyrics").onFirst().performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithTag("lyricCurrent", useUnmergedTree = true).assertTextEquals("The line being sung lights up")
+            shot("island-lyrics", null)
+            compose.onAllNodesWithText("Quick actions").onFirst().performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithTag("quickPanel", useUnmergedTree = true).assertExists()
+            shot("island-quick-actions", null)
+
+            // Lyrics on/off, with its note, under What it shows.
+            val list = compose.onNode(hasScrollToIndexAction())
+            list.performScrollToNode(hasText("Looks the song up on lrclib.net when you open lyrics"))
+            compose.onNodeWithText("Looks the song up on lrclib.net when you open lyrics").performClick()
+            compose.waitForIdle()
+            assertEquals(false, app.store.current.island.lyrics)
+
+            // Music or video, per app.
+            list.performScrollToNode(hasTestTag("media-com.spotify.music"))
+            compose.onNodeWithText("Automatic: music (a known music app)").assertExists()
+            compose.onNode(hasText("Video") and hasAnyAncestor(hasTestTag("media-com.spotify.music"))).performClick()
+            compose.waitForIdle()
+            assertEquals(MediaKind.Video, app.store.current.island.mediaKinds["com.spotify.music"])
+            compose.onNode(hasText("Automatic") and hasAnyAncestor(hasTestTag("media-com.spotify.music"))).performClick()
+            compose.waitForIdle()
+            assertNull(app.store.current.island.mediaKinds["com.spotify.music"])
+            list.performScrollToNode(hasTestTag("media-com.example.player"))
+            compose.onNodeWithText("Automatic: music when it has an album or artist and is under 15 minutes").assertExists()
+
+            // Quick actions: off and on, remove, add, drag, and back to the defaults.
+            list.performScrollToNode(hasText("Quick actions drop-down"))
+            compose.onNodeWithText("Quick actions drop-down").performClick()
+            compose.waitForIdle()
+            assertEquals(false, app.store.current.island.quickActions)
+            compose.onNodeWithText("Quick actions drop-down").performClick()
+            compose.waitForIdle()
+            assertEquals(true, app.store.current.island.quickActions)
+            list.performScrollToNode(hasTestTag("tileOrder"))
+            compose.onNodeWithContentDescription("Remove Wi-Fi").performClick()
+            compose.waitForIdle()
+            assertEquals(QuickTile.defaults - QuickTile.Wifi, app.store.current.island.tiles)
+            list.performScrollToNode(hasText("Hotspot"))
+            compose.onNodeWithText("Hotspot").performClick()
+            compose.waitForIdle()
+            assertEquals(QuickTile.Hotspot, app.store.current.island.tiles.last())
+            list.performScrollToNode(hasTestTag("drag-Bluetooth"))
+            compose.onNodeWithTag("drag-Bluetooth").performTouchInput {
+                down(center)
+                repeat(12) { moveBy(Offset(0f, 21f)) }
+                up()
+            }
+            compose.waitForIdle()
+            val tiles = app.store.current.island.tiles
+            assertEquals("dragged down two places: $tiles", 2, tiles.indexOf(QuickTile.Bluetooth))
+            list.performScrollToNode(hasText("Back to the default tiles"))
+            compose.onNodeWithText("Back to the default tiles").performClick()
+            compose.waitForIdle()
+            assertEquals(QuickTile.defaults, app.store.current.island.tiles)
+        }
     }
 
     @Test

@@ -362,6 +362,36 @@ fun ThemeConfig.forApp(o: AppOverride?): ThemeConfig =
         iconFinish = o.finish ?: iconFinish,
     )
 
+/** Whether an app's media counts as music (the island shows it) or video (the island stays as it is). */
+@Serializable
+enum class MediaKind(val label: String) {
+    Music("Music"),
+    Video("Video"),
+}
+
+/** A tile in the island's quick actions drop-down. */
+@Serializable
+enum class QuickTile(val label: String) {
+    Wifi("Wi-Fi"),
+    Bluetooth("Bluetooth"),
+    Flashlight("Flashlight"),
+    DoNotDisturb("Do not disturb"),
+    AutoRotate("Auto-rotate"),
+    MobileData("Mobile data"),
+    Location("Location"),
+    PowerSaving("Power saving"),
+    Airplane("Airplane mode"),
+    Hotspot("Hotspot"),
+    Screenshot("Screenshot"),
+    LockScreen("Lock screen"),
+    PowerMenu("Power menu"),
+    ;
+
+    companion object {
+        val defaults = listOf(Wifi, Bluetooth, Flashlight, DoNotDisturb, AutoRotate, MobileData, Location, PowerSaving)
+    }
+}
+
 /** The island: a pill at the top of the screen that grows to show charging, music, notifications and alarms. */
 @Serializable
 data class IslandConfig(
@@ -383,6 +413,15 @@ data class IslandConfig(
     val offsetYDp: Int = 6,
     val offsetXDp: Int = 0,
     val popSeconds: Int = 4,
+    /** Your own answer to "music or video?" for an app. Apps not in here are decided automatically. */
+    val mediaKinds: Map<String, MediaKind> = emptyMap(),
+    /** Apps that have played media, most recent first, for the "Music or video?" list. */
+    val mediaApps: List<String> = emptyList(),
+    /** The quick actions drop-down under the island, and its tiles in order. */
+    val quickActions: Boolean = true,
+    val tiles: List<QuickTile> = QuickTile.defaults,
+    /** A Lyrics button on the open music card; lyrics are looked up on lrclib.net only when opened. */
+    val lyrics: Boolean = true,
 )
 
 @Serializable

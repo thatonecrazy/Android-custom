@@ -1,6 +1,14 @@
 package app.veneer.system
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.widget.FrameLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import android.app.PendingIntent
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -31,6 +39,51 @@ sealed class IslandEvent {
     data class Notification(val app: String, val title: String, val text: String, val icon: Bitmap?, val open: PendingIntent?) : IslandEvent()
 }
 
+/** Whether the quick actions drop-down is open. The island and its window both follow this. */
+object IslandPanel {
+    val open = MutableStateFlow(false)
+
+    fun close() {
+        open.value = false
+    }
+}
+
+/** The island window's flags: never steals taps meant for other apps, and hears about taps outside it. */
+internal fun islandWindowFlags(panelOpen: Boolean): Int {
+    var flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+    // Only while the drop-down is open does the window take focus, so Back can close it.
+    if (!panelOpen) flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+    return flags
+}
+
+/**
+ * Holds the island's Compose view. Catches the two things Compose can't see on its own: a tap
+ * outside the window (ACTION_OUTSIDE, from FLAG_WATCH_OUTSIDE_TOUCH) and the Back key.
+ */
+internal class IslandFrame(context: Context) : FrameLayout(context) {
+    var onOutside: (() -> Unit)? = null
+    var onBack: (() -> Unit)? = null
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+            onOutside?.invoke()
+            return true
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && onBack != null) {
+            if (event.action == KeyEvent.ACTION_UP) onBack?.invoke()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+}
+
 object IslandEvents {
     private val _events = MutableSharedFlow<IslandEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<IslandEvent> = _events.asSharedFlow()
@@ -44,11 +97,12 @@ object IslandEvents {
  * window Android lets an app put above the status bar. It wraps the island tightly, so taps
  * anywhere else go to whatever is underneath.
  */
-class IslandOverlay(private val service: AccessibilityService) {
+class IslandOverlay(private val service: AccessibilityService, private val scope: CoroutineScope) {
     private val windows = service.getSystemService(WindowManager::class.java)
-    private var view: ComposeView? = null
+    private var view: IslandFrame? = null
     private var owner: OverlayOwner? = null
     private var config: IslandConfig? = null
+    private var panelJob: Job? = null
 
     fun show(next: IslandConfig) {
         config = next
@@ -58,26 +112,38 @@ class IslandOverlay(private val service: AccessibilityService) {
             return
         }
         val o = OverlayOwner().also { it.start() }
-        val v = ComposeView(service).apply {
+        val compose = ComposeView(service).apply {
             setViewTreeLifecycleOwner(o)
             setViewTreeSavedStateRegistryOwner(o)
             setViewTreeViewModelStoreOwner(o)
             setContent { IslandHost() }
         }
-        if (runCatching { windows.addView(v, params(next)) }.isSuccess) {
-            view = v
+        val frame = IslandFrame(service).apply {
+            addView(compose)
+            // A tap anywhere else, or Back, closes the drop-down. The tap still reaches the app underneath.
+            onOutside = { IslandPanel.close() }
+            onBack = { IslandPanel.close() }
+        }
+        if (runCatching { windows.addView(frame, params(next)) }.isSuccess) {
+            view = frame
             owner = o
+            panelJob = scope.launch {
+                IslandPanel.open.collect { refresh() }
+            }
         } else {
             o.stop()
         }
     }
 
-    /** Re-centers on the camera after the screen turns. */
+    /** Re-centers on the camera after the screen turns, and follows the drop-down opening and closing. */
     fun refresh() {
         config?.let { c -> view?.let { runCatching { windows.updateViewLayout(it, params(c)) } } }
     }
 
     fun hide() {
+        panelJob?.cancel()
+        panelJob = null
+        IslandPanel.close()
         view?.let { runCatching { windows.removeView(it) } }
         view = null
         owner?.stop()
@@ -90,10 +156,7 @@ class IslandOverlay(private val service: AccessibilityService) {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            islandWindowFlags(IslandPanel.open.value),
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL

@@ -1,5 +1,12 @@
 package app.veneer.ui.launcher
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import app.veneer.data.MediaKind
+import app.veneer.system.MediaKinds
+import app.veneer.veneer
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import android.Manifest
 import android.content.ContentUris
 import android.content.Context
@@ -95,10 +102,18 @@ data class NowPlaying(
     val art: ImageBitmap?,
     val playing: Boolean,
     val controller: MediaController,
+    /** The app that's playing. */
+    val packageName: String = "",
+    val album: String = "",
+    /** How long the media is, or 0 when the app doesn't say. */
+    val durationMs: Long = 0L,
+    /** Music or video (see [MediaKinds.decide]), and how that was decided. */
+    val kind: MediaKind = MediaKind.Music,
+    val kindReason: MediaKinds.Reason = MediaKinds.Reason.MediaInfo,
 )
 
 /** Follows whichever app is playing media and reports what's on. */
-internal class NowPlayingWatcher(context: Context, private val onChange: (NowPlaying?) -> Unit) {
+internal class NowPlayingWatcher(private val context: Context, private val onChange: (NowPlaying?) -> Unit) {
     private val manager = context.getSystemService(MediaSessionManager::class.java)
     private val component = NotificationDotsService.component(context)
     private val handler = Handler(Looper.getMainLooper())
@@ -148,7 +163,12 @@ internal class NowPlayingWatcher(context: Context, private val onChange: (NowPla
             ?: ""
         val art = (meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART))
             ?.let { shrink(it).asImageBitmap() }
-        onChange(NowPlaying(title, artist, art, c.playbackState?.state == PlaybackState.STATE_PLAYING, c))
+        val pkg = c.packageName.orEmpty()
+        val album = meta.getString(MediaMetadata.METADATA_KEY_ALBUM).orEmpty()
+        val duration = meta.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        val decision = MediaKinds.decide(context, pkg, album, artist, duration)
+        MediaKinds.noteApp(context, pkg)
+        onChange(NowPlaying(title, artist, art, c.playbackState?.state == PlaybackState.STATE_PLAYING, c, pkg, album, duration, decision.kind, decision.reason))
     }
 
     private fun shrink(b: Bitmap): Bitmap {
@@ -172,7 +192,18 @@ internal fun rememberNowPlaying(allowed: Boolean): State<NowPlaying?> {
         watcher.start()
         onDispose { watcher.stop() }
     }
-    return state
+    // When you change an app's "music or video?" answer, what's playing now follows it right away.
+    val store = context.veneer.store
+    val choices by remember(store) { store.state.map { it.island.mediaKinds }.distinctUntilChanged() }
+        .collectAsState(store.current.island.mediaKinds)
+    return remember(state) {
+        derivedStateOf {
+            state.value?.let { np ->
+                val d = MediaKinds.decide(np.packageName, np.album, np.artist, np.durationMs, choices[np.packageName], MediaKinds.isBrowser(context, np.packageName))
+                if (d.kind == np.kind && d.reason == np.kindReason) np else np.copy(kind = d.kind, kindReason = d.reason)
+            }
+        }
+    }
 }
 
 /** Album art, title, artist and play controls for whatever is playing. */

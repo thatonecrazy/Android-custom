@@ -29,10 +29,12 @@ class LockService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
-        val overlay = IslandOverlay(this)
-        island = overlay
         scope?.cancel()
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).apply {
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        scope = serviceScope
+        val overlay = IslandOverlay(this, serviceScope)
+        island = overlay
+        serviceScope.apply {
             launch {
                 veneer.store.state.map { it.island }.distinctUntilChanged().collect { config ->
                     if (config.enabled) overlay.show(config) else overlay.hide()
@@ -82,6 +84,9 @@ class LockService : AccessibilityService() {
 
         /** Whether the service is running right now (turned on and connected). */
         val running: Boolean get() = instance != null
+
+        /** Runs one of Android's global actions (screenshot, power menu, ...). False when the service isn't running. */
+        fun globalAction(action: Int): Boolean = instance?.performGlobalAction(action) == true
 
         /** Locks the screen. Returns false when the service isn't turned on yet. */
         fun lock(): Boolean {
